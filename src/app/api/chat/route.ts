@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import ZAI from "z-ai-web-dev-sdk";
+import { detectSkills, buildSkillContext, agentSkills } from "@/lib/skill-loader";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -7,40 +8,50 @@ interface ChatMessage {
   agent?: string;
 }
 
-const AGENTS: Record<string, {
-  name: string;
-  role: string;
-  systemPrompt: string;
-}> = {
+// Agent configurations with skills
+const AGENTS: Record<
+  string,
+  {
+    name: string;
+    role: string;
+    systemPrompt: string;
+    skills: string[];
+  }
+> = {
   victor: {
     name: "Victor",
     role: "Architecte",
     systemPrompt:
       "Tu es Victor, l'architecte en chef de Luymas AI. Tu analyses les projets, conçois l'architecture technique et planifies les étapes de développement. Tu es méthodique, structuré et toujours orienté vers la solution la plus robuste. Réponds en français de manière concise et professionnelle.",
+    skills: agentSkills.victor,
   },
   aria: {
     name: "Aria",
     role: "Designer UI/UX",
     systemPrompt:
-      "Tu es Aria, la designer UI/UX de Luymas AI. Tu crées des interfaces magnifiques et intuitives. Tu maîtrises les principes de design, l'accessibilité et l'expérience utilisateur. Tu es créative et attentionnée aux détails. Réponds en français de manière concise et professionnelle.",
+      "Tu es Aria, la designer UI/UX de Luymas AI. Tu crées des interfaces magnifiques et intuitives. Tu maîtrises les principes de design, l'accessibilité et l'expérience utilisateur. Tu es créative et attentionnée aux détails. Tu évites le 'AI slop' générique et crées des designs distinctifs et mémorables. Réponds en français.",
+    skills: agentSkills.aria,
   },
   kai: {
     name: "Kai",
     role: "Développeur Full-Stack",
     systemPrompt:
       "Tu es Kai, le développeur full-stack de Luymas AI. Tu codes des applications web complètes avec React, Next.js, TypeScript, Node.js et les bases de données. Tu es précis, efficace et écris du code propre et bien documenté. Réponds en français de manière concise et professionnelle.",
+    skills: agentSkills.kai,
   },
   elena: {
     name: "Elena",
     role: "Testeuse QA",
     systemPrompt:
-      "Tu es Elena, la testeuse QA de Luymas AI. Tu vérifies la qualité du code, identifies les bugs et t'assures que tout fonctionne parfaitement. Tu es rigoureuse, méthodique et ne laisses rien passer. Réponds en français de manière concise et professionnellement.",
+      "Tu es Elena, la testeuse QA de Luymas AI. Tu vérifies la qualité du code, identifies les bugs et t'assures que tout fonctionne parfaitement. Tu es rigoureuse, méthodique et ne laisses rien passer. Réponds en français de manière concise et professionnelle.",
+    skills: agentSkills.elena,
   },
   thomas: {
     name: "Thomas",
     role: "DevOps",
     systemPrompt:
       "Tu es Thomas, l'ingénieur DevOps de Luymas AI. Tu gères les déploiements, l'infrastructure cloud, les CI/CD pipelines et la sécurité. Tu es organisé, proactif et toujours à jour sur les meilleures pratiques. Réponds en français de manière concise et professionnelle.",
+    skills: agentSkills.thomas,
   },
 };
 
@@ -55,13 +66,13 @@ function selectAgent(message: string): string {
     return "victor";
   if (
     lower.match(
-      /design|ui|ux|interface|style|css|couleur|beau|magnif|layout|responsive|maquette/
+      /design|ui|ux|interface|style|css|couleur|beau|magnif|layout|responsive|maquette|poster|affiche|visuel|logo|brand|marque/
     )
   )
     return "aria";
   if (
     lower.match(
-      /code|développer|fonction|api|backend|frontend|react|next|typescript|bug|erreur|javascript|program|implement/
+      /code|développer|fonction|api|backend|frontend|react|next|typescript|bug|erreur|javascript|program|implement|composant|artifact/
     )
   )
     return "kai";
@@ -73,7 +84,7 @@ function selectAgent(message: string): string {
     return "elena";
   if (
     lower.match(
-      /déployer|héberg|serveur|cloud|vercel|netlify|docker|infra|ci\/cd|scaling|monitor/
+      /déployer|héberg|serveur|cloud|vercel|netlify|docker|infra|ci\/cd|scaling|monitor|mcp|connecteur/
     )
   )
     return "thomas";
@@ -107,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Message requis" }, { status: 400 });
     }
 
-    // Normalize agent name (handle both "Victor" and "victor")
+    // Normalize agent name
     const agentKey = (() => {
       if (selectedAgent === "auto") return selectAgent(message);
       const lower = selectedAgent.toLowerCase();
@@ -117,9 +128,16 @@ export async function POST(request: NextRequest) {
 
     const agent = AGENTS[agentKey];
 
+    // Detect which skills should be activated based on message
+    const activatedSkills = detectSkills(message, agentKey);
+
+    // Build system prompt with skill context
+    const skillContext = buildSkillContext(activatedSkills);
+    const fullSystemPrompt = agent.systemPrompt + skillContext;
+
     // Build messages array for LLM
     const messages = [
-      { role: "assistant" as const, content: agent.systemPrompt },
+      { role: "assistant" as const, content: fullSystemPrompt },
     ];
 
     // Add conversation history
@@ -153,6 +171,7 @@ export async function POST(request: NextRequest) {
         response,
         agent: agent.name,
         agentRole: agent.role,
+        skills: activatedSkills,
       });
     } catch (aiError) {
       console.error("AI SDK error, using fallback:", aiError);
@@ -166,6 +185,7 @@ export async function POST(request: NextRequest) {
         response,
         agent: agent.name,
         agentRole: agent.role,
+        skills: activatedSkills,
       });
     }
   } catch {
