@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Luymas AI - L'Orchestrateur d'Agents",
+  title: "Luymas AI - What will you build today?",
   description:
     "Plateforme multi-agents IA propulsée par 22 APIs gratuites. Architecture, Design, Code, QA & DevOps.",
   keywords: [
@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     "IA",
     "Orchestrateur",
     "22 APIs",
+    "AI Builder",
   ],
   authors: [{ name: "Luymas AI Team" }],
   icons: {
