@@ -87,3 +87,17 @@ Work Log:
 Stage Summary:
 - Luymas AI running at http://localhost:5173/
 - Admin dashboard at http://localhost:5173/admin
+
+---
+Task ID: deploy-prep
+Agent: Subagent (general-purpose)
+Task: Create Luymas README and deploy config
+
+Work Log:
+- Replaced `/home/z/luymas-ai/README.md` with full Luymas AI branded README (French, multi-agent docs, 22+ API providers, project structure, tech stack)
+- Created `/home/z/luymas-ai/vercel.json` with Remix framework config (buildCommand, outputDirectory, installCommand, devCommand)
+- Created `/home/z/luymas-ai/netlify.toml` with build config and SPA redirect rules
+
+Stage Summary:
+- README fully rebranded from bolt.diy to Luymas AI with French documentation
+- Deployment configs ready for Vercel and Netlify
