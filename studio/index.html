@@ -14,6 +14,15 @@
 </head>
 <body>
 
+  <!-- Wave Canvas (Liquid Glass Background) -->
+  <canvas id="waveCanvas"></canvas>
+
+  <!-- Liquid Glass Loading Overlay -->
+  <div id="liquid-glass-overlay" class="liquid-glass-overlay" style="display:none">
+    <div class="spinner spinner-lg"></div>
+    <p>Loading Luymas AI Studio...</p>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast-container" class="toast-container" role="alert" aria-live="polite"></div>
 
@@ -121,7 +130,7 @@
         <div class="dashboard-layout">
           <div class="dashboard-main-col">
             <!-- Agent Grid -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header">
                 <div>
                   <div class="card-title">🤖 Agent Team</div>
@@ -135,13 +144,13 @@
             </div>
 
             <!-- Activity Feed -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header">
                 <div>
                   <div class="card-title">📡 Recent Activity</div>
                   <div class="card-subtitle">Live feed of agent actions</div>
                 </div>
-                <select id="activity-filter" class="select-sm" aria-label="Filter activity">
+                <select id="activity-filter" class="select-sm glass-input" aria-label="Filter activity">
                   <option value="all">All</option>
                   <option value="agent">Agents</option>
                   <option value="task">Tasks</option>
@@ -157,7 +166,7 @@
 
           <div class="dashboard-side-col">
             <!-- Quick Actions -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header"><div class="card-title">⚡ Quick Actions</div></div>
               <div class="card-body">
                 <div class="quick-actions">
@@ -178,7 +187,7 @@
             </div>
 
             <!-- System Health -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header"><div class="card-title">💚 System Health</div></div>
               <div class="card-body">
                 <div id="dashboard-health" class="health-grid"></div>
@@ -186,7 +195,7 @@
             </div>
 
             <!-- Approval Queue -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header">
                 <div>
                   <div class="card-title">🔔 Pending Approvals</div>
@@ -213,7 +222,7 @@
           </div>
           <div class="panel-actions">
             <button class="btn" onclick="app.refreshAgents()">🔄 Refresh</button>
-            <button class="btn btn-primary" onclick="app.startAllAgents()">▶ Start All</button>
+            <button class="btn btn-primary glass-btn" onclick="app.startAllAgents()">▶ Start All</button>
           </div>
         </div>
 
@@ -233,7 +242,7 @@
             <h2 class="panel-title">📋 Projects</h2>
             <p class="panel-subtitle">Manage your software projects from planning to deployment</p>
           </div>
-          <button class="btn btn-primary" onclick="app.createProjectModal()">+ New Project</button>
+          <button class="btn btn-primary glass-btn" onclick="app.createProjectModal()">+ New Project</button>
         </div>
 
         <div class="projects-filters">
@@ -255,7 +264,7 @@
           <!-- Threads Sidebar -->
           <div class="warroom-sidebar">
             <div class="warroom-sidebar-header">
-              <input type="text" class="input-sm" id="thread-search" placeholder="Search conversations..." aria-label="Search conversations">
+              <input type="text" class="input-sm glass-input" id="thread-search" placeholder="Search conversations..." aria-label="Search conversations">
             </div>
             <div id="thread-list" class="thread-list"></div>
           </div>
@@ -349,18 +358,18 @@
           <!-- Left: Image Generation + Gallery -->
           <div class="design-main">
             <!-- Generate Image Form -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header"><div class="card-title">✨ Generate Image</div></div>
               <div class="card-body">
                 <form id="design-gen-form" class="design-gen-form">
                   <div class="form-group">
                     <label class="form-label" for="design-prompt">Prompt</label>
-                    <textarea id="design-prompt" class="form-textarea" rows="3" placeholder="Describe the image you want to generate..." required></textarea>
+                    <textarea id="design-prompt" class="form-textarea glass-input" rows="3" placeholder="Describe the image you want to generate..." required></textarea>
                   </div>
                   <div class="form-row-3">
                     <div class="form-group">
                       <label class="form-label" for="design-model">Model</label>
-                      <select id="design-model" class="form-select">
+                      <select id="design-model" class="form-select glass-input">
                         <option value="flux.1">FLUX.1</option>
                         <option value="sd3">Stable Diffusion 3</option>
                         <option value="z-image">Z-Image Turbo</option>
@@ -368,7 +377,7 @@
                     </div>
                     <div class="form-group">
                       <label class="form-label" for="design-size">Size</label>
-                      <select id="design-size" class="form-select">
+                      <select id="design-size" class="form-select glass-input">
                         <option value="1024x1024">1024×1024</option>
                         <option value="1024x768">1024×768</option>
                         <option value="768x1024">768×1024</option>
@@ -377,7 +386,7 @@
                     </div>
                     <div class="form-group">
                       <label class="form-label" for="design-style">Style</label>
-                      <select id="design-style" class="form-select">
+                      <select id="design-style" class="form-select glass-input">
                         <option value="auto">Auto</option>
                         <option value="photorealistic">Photorealistic</option>
                         <option value="illustration">Illustration</option>
@@ -386,13 +395,13 @@
                       </select>
                     </div>
                   </div>
-                  <button type="submit" class="btn btn-primary btn-block" id="design-gen-btn">🎨 Generate Image</button>
+                  <button type="submit" class="btn btn-primary glass-btn btn-block" id="design-gen-btn">🎨 Generate Image</button>
                 </form>
               </div>
             </div>
 
             <!-- Image Gallery -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header">
                 <div class="card-title">🖼️ Design Gallery</div>
                 <span id="design-gallery-count" class="badge">0 images</span>
@@ -410,7 +419,7 @@
           <!-- Right: Design System + Inspiration -->
           <div class="design-side">
             <!-- Design System Preview -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header"><div class="card-title">🎯 Design System</div></div>
               <div class="card-body">
                 <div class="design-system-preview">
@@ -452,7 +461,7 @@
             </div>
 
             <!-- Freshness Score -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header"><div class="card-title">🌿 Freshness Score</div></div>
               <div class="card-body">
                 <div class="freshness-display">
@@ -472,7 +481,7 @@
             </div>
 
             <!-- Inspiration Browser -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header">
                 <div class="card-title">💡 Inspiration</div>
                 <span class="badge">Trending</span>
@@ -483,7 +492,7 @@
             </div>
 
             <!-- Design Trend Alerts -->
-            <div class="card">
+            <div class="card glass-card">
               <div class="card-header"><div class="card-title">📈 Trend Alerts</div></div>
               <div class="card-body">
                 <div id="trend-alerts" class="trend-alerts"></div>
@@ -503,7 +512,7 @@
             <p class="panel-subtitle">Browse and manage files generated by agents</p>
           </div>
           <div class="panel-actions">
-            <select id="files-project-select" class="form-select" aria-label="Select project">
+            <select id="files-project-select" class="form-select glass-input" aria-label="Select project">
               <option value="">Select a project...</option>
             </select>
             <button class="btn" id="btn-download-zip" onclick="app.downloadProjectZip()">📦 Download ZIP</button>

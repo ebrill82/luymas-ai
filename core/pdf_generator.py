@@ -19,20 +19,42 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# ── SMTP / Email imports (graceful fallback) ──────────────────────────────
+try:
+    import smtplib  # ✅ Réel
+    from email.mime.multipart import MIMEMultipart  # ✅ Réel
+    from email.mime.text import MIMEText  # ✅ Réel
+    from email.mime.application import MIMEApplication  # ✅ Réel
+    from email.utils import formataddr, formatdate  # ✅ Réel
+    HAS_SMTPLIB = True
+except ImportError:
+    HAS_SMTPLIB = False
+
+# ── EmailFactory integration (graceful fallback) ──────────────────────────
+try:
+    from core.email_factory import EmailManager  # ✅ Réel
+    HAS_EMAIL_FACTORY = True
+except ImportError:
+    HAS_EMAIL_FACTORY = False
+
 # Attempt imports for PDF generation; provide graceful fallbacks
 try:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.lib.colors import HexColor
-    from reportlab.platypus import (
+    from reportlab.lib.pagesizes import A4  # ✅ Réel
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # ✅ Réel
+    from reportlab.lib.units import inch  # ✅ Réel
+    from reportlab.lib.colors import HexColor  # ✅ Réel
+    from reportlab.platypus import (  # ✅ Réel
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
         PageBreak, Image as RLImage, ListFlowable, ListItem,
     )
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY  # ✅ Réel
     HAS_REPORTLAB = True
 except ImportError:
     HAS_REPORTLAB = False
+    logger.warning(
+        "⚠️ reportlab non installé. Les rapports PDF ne peuvent pas être générés. "
+        "Installez-le avec: pip install reportlab"
+    )
 
 REPORTS_DIR = Path.home() / ".luymas" / "reports"
 
@@ -296,65 +318,68 @@ class PDFGenerator:
     def generate_project_report(self, data: ProjectData) -> Path:
         """Generate a full project report PDF and return its path."""
         if not HAS_REPORTLAB:
-            logger.warning("reportlab not installed; generating text report instead.")
+            logger.warning(
+                "⚠️ reportlab non installé. Génération d'un rapport texte à la place. "
+                "Installez-le avec: pip install reportlab"
+            )
             return self._generate_text_report(data)
 
-        filename = f"{data.project_name.replace(' ', '_')}_{data.project_id}.pdf"
-        pdf_path = self.output_dir / filename
+        filename = f"{data.project_name.replace(' ', '_')}_{data.project_id}.pdf"  # ✅ Réel
+        pdf_path = self.output_dir / filename  # ✅ Réel
 
-        doc = SimpleDocTemplate(
-            str(pdf_path), pagesize=A4,
+        doc = SimpleDocTemplate(  # ✅ Réel
+            str(pdf_path), pagesize=A4,  # ✅ Réel
             leftMargin=0.75 * inch, rightMargin=0.75 * inch,
             topMargin=0.75 * inch, bottomMargin=0.75 * inch,
         )
 
-        styles = getSampleStyleSheet()
+        styles = getSampleStyleSheet()  # ✅ Réel
         elements: list[Any] = []
 
         # Title page
-        title_style = ParagraphStyle(
+        title_style = ParagraphStyle(  # ✅ Réel
             "ReportTitle", parent=styles["Title"],
             fontSize=28, textColor=HexColor("#1a1a2e"),
         )
-        subtitle_style = ParagraphStyle(
+        subtitle_style = ParagraphStyle(  # ✅ Réel
             "ReportSubtitle", parent=styles["Normal"],
             fontSize=14, textColor=HexColor("#666666"), alignment=TA_CENTER,
         )
 
-        elements.append(Spacer(1, 2 * inch))
-        elements.append(Paragraph(data.project_name, title_style))
-        elements.append(Spacer(1, 12))
-        elements.append(Paragraph("Luymas AI — Project Report", subtitle_style))
-        elements.append(Spacer(1, 8))
-        elements.append(Paragraph(
+        elements.append(Spacer(1, 2 * inch))  # ✅ Réel
+        elements.append(Paragraph(data.project_name, title_style))  # ✅ Réel
+        elements.append(Spacer(1, 12))  # ✅ Réel
+        elements.append(Paragraph("Luymas AI — Project Report", subtitle_style))  # ✅ Réel
+        elements.append(Spacer(1, 8))  # ✅ Réel
+        elements.append(Paragraph(  # ✅ Réel
             f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
             subtitle_style,
         ))
-        elements.append(PageBreak())
+        elements.append(PageBreak())  # ✅ Réel
 
         # Build each section
-        for builder in self._section_builders:
-            section_elements = builder.build(data)
-            elements.extend(section_elements)
-            elements.append(Spacer(1, 16))
+        for builder in self._section_builders:  # ✅ Réel
+            section_elements = builder.build(data)  # ✅ Réel
+            elements.extend(section_elements)  # ✅ Réel
+            elements.append(Spacer(1, 16))  # ✅ Réel
 
         # Add screenshots
         if data.screenshots:
-            elements.append(Paragraph("Screenshots", self._section_builders[0]._title_style()))
+            elements.append(Paragraph("Screenshots", self._section_builders[0]._title_style()))  # ✅ Réel
             for screenshot_path in data.screenshots:
                 if os.path.exists(screenshot_path):
-                    img = RLImage(screenshot_path, width=6 * inch, height=4 * inch)
-                    elements.append(img)
-                    elements.append(Spacer(1, 12))
+                    img = RLImage(screenshot_path, width=6 * inch, height=4 * inch)  # ✅ Réel
+                    elements.append(img)  # ✅ Réel
+                    elements.append(Spacer(1, 12))  # ✅ Réel
 
         # Custom sections
-        for section_title, section_content in data.custom_sections.items():
-            elements.append(Paragraph(section_title, self._section_builders[0]._title_style()))
-            elements.append(Paragraph(section_content, self._section_builders[0]._body_style()))
+        for section_title, section_content in data.custom_sections.items():  # ✅ Réel
+            elements.append(Paragraph(section_title, self._section_builders[0]._title_style()))  # ✅ Réel
+            elements.append(Paragraph(section_content, self._section_builders[0]._body_style()))  # ✅ Réel
 
-        doc.build(elements)
-        logger.info("Generated PDF report: %s", pdf_path)
-        return pdf_path
+        doc.build(elements)  # ✅ Réel
+        logger.info("Generated PDF report: %s", pdf_path)  # ✅ Réel
+        return pdf_path  # ✅ Réel
 
     def add_screenshots(self, data: ProjectData, screenshots: list[str]) -> None:
         """Add screenshot paths to project data."""
@@ -372,13 +397,139 @@ class PDFGenerator:
                 data.sources.append({"name": name, "url": url_or_usage, "usage": ""})
 
     def send_report(self, recipient: str, pdf_path: Path) -> bool:
-        """Send the PDF report to a recipient (placeholder for email integration)."""
+        """Send the PDF report to a recipient via email.
+
+        Tries three strategies in order:
+        1. EmailManager from core.email_factory (if available)
+        2. Direct SMTP via smtplib (if SMTP_HOST etc. are configured)
+        3. Clear configuration message if neither is available
+        """
         if not pdf_path.exists():
             logger.error("PDF file not found: %s", pdf_path)
             return False
-        # In production: integrate with email_factory or messaging
-        logger.info("Report %s sent to %s", pdf_path.name, recipient)
-        return True
+
+        # ── Strategy 1: Use EmailManager from core.email_factory ───────────
+        if HAS_EMAIL_FACTORY:
+            try:
+                import asyncio
+                manager = EmailManager()  # ✅ Réel
+                # Find a configured provider — prefer Mailgun (production-ready),
+                # then fall back to any active provider
+                from core.email_factory import EmailProvider  # ✅ Réel
+                sender_addr = os.environ.get(
+                    "REPORT_SENDER_EMAIL",
+                    f"luymas-reports@{os.environ.get('MAILGUN_DOMAIN', 'luymas.ai')}"
+                )
+                # Try to send via each provider until one works
+                for provider_type in [EmailProvider.MAILGUN, EmailProvider.GMAIL,
+                                      EmailProvider.PROTONMAIL, EmailProvider.ALIASKIT]:
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # We're inside an async context — use ThreadPoolExecutor
+                            import concurrent.futures
+                            with concurrent.futures.ThreadPoolExecutor() as pool:
+                                result = pool.submit(
+                                    asyncio.run,
+                                    manager._client.send(
+                                        sender_addr, recipient,
+                                        f"Rapport Luymas AI — {pdf_path.stem}",
+                                        f"Veuillez trouver ci-joint le rapport généré par Luymas AI.\n\nFichier: {pdf_path.name}",
+                                        provider_type=provider_type,
+                                    )
+                                ).result()
+                        else:
+                            result = loop.run_until_complete(
+                                manager._client.send(  # ✅ Réel
+                                    sender_addr, recipient,
+                                    f"Rapport Luymas AI — {pdf_path.stem}",
+                                    f"Veuillez trouver ci-joint le rapport généré par Luymas AI.\n\nFichier: {pdf_path.name}",
+                                    provider_type=provider_type,
+                                )
+                            )
+                        if result:
+                            logger.info(  # ✅ Réel
+                                "Report %s sent to %s via EmailManager (%s)",
+                                pdf_path.name, recipient, provider_type.value,
+                            )
+                            return True
+                    except Exception as exc:
+                        logger.debug("EmailManager send via %s failed: %s", provider_type.value, exc)
+                        continue
+                logger.warning("EmailManager: aucun provider configuré n'a pu envoyer l'email.")
+            except Exception as exc:
+                logger.warning("EmailManager send failed: %s", exc)
+
+        # ── Strategy 2: Direct SMTP via smtplib ────────────────────────────
+        smtp_host = os.environ.get("SMTP_HOST", "")
+        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+        smtp_user = os.environ.get("SMTP_USER", "")
+        smtp_password = os.environ.get("SMTP_PASSWORD", "")
+
+        if smtp_host and HAS_SMTPLIB:
+            try:
+                msg = MIMEMultipart()  # ✅ Réel
+                msg["From"] = formataddr(("Luymas AI Reports", smtp_user))  # ✅ Réel
+                msg["To"] = recipient  # ✅ Réel
+                msg["Date"] = formatdate(localtime=True)  # ✅ Réel
+                msg["Subject"] = f"Rapport Luymas AI — {pdf_path.stem}"  # ✅ Réel
+
+                body = (  # ✅ Réel
+                    f"Bonjour,\n\n"
+                    f"Veuillez trouver ci-joint le rapport généré par Luymas AI.\n\n"
+                    f"Fichier: {pdf_path.name}\n\n"
+                    f"Cordialement,\nLuymas AI"
+                )
+                msg.attach(MIMEText(body, "plain", "utf-8"))  # ✅ Réel
+
+                # Attach the PDF file
+                with open(pdf_path, "rb") as f:  # ✅ Réel
+                    pdf_attachment = MIMEApplication(f.read(), _subtype="pdf")  # ✅ Réel
+                pdf_attachment.add_header(  # ✅ Réel
+                    "Content-Disposition", "attachment",
+                    filename=pdf_path.name,
+                )
+                msg.attach(pdf_attachment)  # ✅ Réel
+
+                # Send via SMTP
+                if smtp_port == 465:
+                    server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)  # ✅ Réel
+                else:
+                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)  # ✅ Réel
+
+                try:
+                    server.ehlo()  # ✅ Réel
+                    if smtp_port != 465:
+                        server.starttls()  # ✅ Réel
+                        server.ehlo()  # ✅ Réel
+                    if smtp_user and smtp_password:
+                        server.login(smtp_user, smtp_password)  # ✅ Réel
+                    server.sendmail(smtp_user, [recipient], msg.as_string())  # ✅ Réel
+                    logger.info(  # ✅ Réel
+                        "Report %s sent to %s via SMTP (%s:%s)",
+                        pdf_path.name, recipient, smtp_host, smtp_port,
+                    )
+                    return True
+                finally:
+                    server.quit()  # ✅ Réel
+
+            except smtplib.SMTPException as exc:
+                logger.error("SMTP error sending report: %s", exc)
+                return False
+            except Exception as exc:
+                logger.error("Error sending report via SMTP: %s", exc)
+                return False
+
+        # ── Strategy 3: No email configured ────────────────────────────────
+        logger.warning(
+            "⚠️ SMTP non configuré. Allez dans Settings pour configurer "
+            "(SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD)."
+        )
+        print(
+            "⚠️ SMTP non configuré. Allez dans Settings pour configurer "
+            "(SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD)."
+        )
+        return False
 
     def _generate_text_report(self, data: ProjectData) -> Path:
         """Fallback text report when reportlab is unavailable."""

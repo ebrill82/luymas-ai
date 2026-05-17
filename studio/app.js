@@ -2927,3 +2927,96 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// =============================================================================
+// Liquid Glass — Wave Canvas Animation
+// =============================================================================
+(function initLiquidGlass() {
+  const canvas = document.getElementById('waveCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  
+  const waves = [
+    { amplitude: 50, frequency: 0.02, speed: 0.03, color: 'rgba(100, 100, 255, 0.15)', offset: 0 },
+    { amplitude: 30, frequency: 0.03, speed: 0.05, color: 'rgba(150, 100, 255, 0.10)', offset: 2 },
+    { amplitude: 40, frequency: 0.015, speed: 0.02, color: 'rgba(100, 200, 255, 0.08)', offset: 4 },
+    { amplitude: 25, frequency: 0.025, speed: 0.04, color: 'rgba(80, 150, 255, 0.12)', offset: 1 },
+  ];
+  
+  // Floating bubbles/particles
+  const bubbles = [];
+  for (let i = 0; i < 30; i++) {
+    bubbles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      radius: Math.random() * 4 + 1,
+      speedY: Math.random() * 0.5 + 0.1,
+      speedX: (Math.random() - 0.5) * 0.3,
+      opacity: Math.random() * 0.3 + 0.05,
+    });
+  }
+  
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw waves
+    waves.forEach(wave => {
+      ctx.beginPath();
+      for (let x = 0; x <= canvas.width; x += 5) {
+        const y = canvas.height * 0.5 + Math.sin(x * wave.frequency + wave.offset) * wave.amplitude + Math.cos(x * 0.01 + wave.offset) * 20;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = wave.color;
+      ctx.fill();
+      wave.offset += wave.speed;
+    });
+    
+    // Draw bubbles
+    bubbles.forEach(bubble => {
+      ctx.beginPath();
+      ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(150, 180, 255, ${bubble.opacity})`;
+      ctx.fill();
+      
+      bubble.y -= bubble.speedY;
+      bubble.x += bubble.speedX;
+      
+      if (bubble.y < -10) {
+        bubble.y = canvas.height + 10;
+        bubble.x = Math.random() * canvas.width;
+      }
+      if (bubble.x < -10) bubble.x = canvas.width + 10;
+      if (bubble.x > canvas.width + 10) bubble.x = -10;
+    });
+    
+    requestAnimationFrame(animate);
+  }
+  animate();
+  
+  // Ripple effect on glass buttons
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.glass-btn, .btn-primary');
+    if (!btn) return;
+    
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple-effect';
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  });
+})();

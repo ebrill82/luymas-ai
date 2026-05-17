@@ -16,8 +16,8 @@ def test_agent_imports():
     from agents.pdg import PDGAgent
     from agents.pm import PMAgent
     from agents.architect import ArchitectAgent
-    from agents.coder_back import BackendCoderAgent
-    from agents.coder_front import FrontendCoderAgent
+    from agents.coder_back import CoderBackAgent
+    from agents.coder_front import CoderFrontAgent
     from agents.designer import DesignerAgent
     from agents.guardian import GuardianAgent
     from agents.tester import TesterAgent
