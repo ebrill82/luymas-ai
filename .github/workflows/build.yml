@@ -6,11 +6,29 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            output: LuymasAI.exe
+            platform: windows
+          - os: ubuntu-latest
+            output: LuymasAI-linux-x64
+            platform: linux
+          - os: macos-latest
+            output: LuymasAI-macos-x64
+            platform: macos
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,52 +38,64 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller pyyaml flask python-dotenv aiohttp ollama reportlab Pillow pydantic
+          pip install pyinstaller
+          pip install flask pyyaml python-dotenv aiohttp requests pillow pydantic reportlab ollama
 
-      - name: Build Windows EXE
-        run: python build_exe.py
-
-      - name: Rename and move to releases
+      - name: Build with PyInstaller
         run: |
-          mkdir -p releases
-          copy dist\LuymasAI\LuymasAI.exe releases\LuymasAI.exe
+          pyinstaller --name=LuymasAI --onefile --console --noconfirm ^
+            --add-data=studio;studio ^
+            --add-data=config;config ^
+            --add-data=templates;templates ^
+            --hidden-import=agents.base ^
+            --hidden-import=agents.pdg ^
+            --hidden-import=agents.pm ^
+            --hidden-import=agents.architect ^
+            --hidden-import=agents.coder_back ^
+            --hidden-import=agents.coder_front ^
+            --hidden-import=agents.designer ^
+            --hidden-import=agents.guardian ^
+            --hidden-import=agents.tester ^
+            --hidden-import=agents.ops ^
+            --hidden-import=agents.caretaker ^
+            --hidden-import=agents.talent_scout ^
+            --hidden-import=core.orchestrator ^
+            --hidden-import=core.messenger ^
+            --hidden-import=core.memory ^
+            --hidden-import=core.pdf_generator ^
+            --hidden-import=core.api_injector ^
+            --hidden-import=core.auto_updater ^
+            --hidden-import=core.github_scout ^
+            --hidden-import=core.self_improver ^
+            --hidden-import=core.experience_learner ^
+            --hidden-import=core.email_factory ^
+            --hidden-import=core.captcha_solver ^
+            --hidden-import=core.identity_manager ^
+            --hidden-import=design.image_generator ^
+            --hidden-import=design.design_plugins ^
+            --hidden-import=design.design_updater ^
+            --hidden-import=ollama ^
+            --hidden-import=yaml ^
+            --hidden-import=flask ^
+            --hidden-import=dotenv ^
+            --hidden-import=aiohttp ^
+            --hidden-import=reportlab ^
+            --hidden-import=PIL ^
+            --hidden-import=pydantic ^
+            --collect-all=flask ^
+            --collect-all=werkzeug ^
+            --collect-all=jinja2 ^
+            --exclude-module=tkinter ^
+            --exclude-module=matplotlib ^
+            --exclude-module=scipy ^
+            --exclude-module=pandas ^
+            launcher.py
         shell: cmd
+        if: matrix.platform == 'windows'
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LuymasAI-windows-x64
-          path: releases/LuymasAI.exe
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: releases/LuymasAI.exe
-          name: Luymas AI ${{ github.ref_name }}
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
+      - name: Build with PyInstaller (Unix)
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller pyyaml flask python-dotenv aiohttp ollama reportlab Pillow pydantic
-
-      - name: Build Linux Binary
-        run: |
-          python -m PyInstaller \
-            --name=LuymasAI \
-            --onefile \
-            --console \
-            --noconfirm \
+          pyinstaller --name=LuymasAI --onefile --console --noconfirm \
             --add-data="studio:studio" \
             --add-data="config:config" \
             --add-data="templates:templates" \
@@ -107,66 +137,22 @@ jobs:
             --collect-all=flask \
             --collect-all=werkzeug \
             --collect-all=jinja2 \
+            --exclude-module=tkinter \
+            --exclude-module=matplotlib \
+            --exclude-module=scipy \
+            --exclude-module=pandas \
             launcher.py
-
-      - name: Move to releases
-        run: |
-          mkdir -p releases
-          cp dist/LuymasAI releases/LuymasAI-linux-x64
+        shell: bash
+        if: matrix.platform != 'windows'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LuymasAI-linux-x64
-          path: releases/LuymasAI-linux-x64
+          name: LuymasAI-${{ matrix.platform }}
+          path: dist/${{ matrix.output }}
 
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller pyyaml flask python-dotenv aiohttp ollama reportlab Pillow pydantic
-
-      - name: Build macOS Binary
-        run: |
-          python -m PyInstaller \
-            --name=LuymasAI \
-            --onefile \
-            --console \
-            --noconfirm \
-            --add-data="studio:studio" \
-            --add-data="config:config" \
-            --add-data="templates:templates" \
-            --hidden-import=agents.base \
-            --hidden-import=core.orchestrator \
-            --hidden-import=ollama \
-            --hidden-import=yaml \
-            --hidden-import=flask \
-            --hidden-import=dotenv \
-            --hidden-import=aiohttp \
-            --hidden-import=reportlab \
-            --hidden-import=PIL \
-            --hidden-import=pydantic \
-            --collect-all=flask \
-            --collect-all=werkzeug \
-            --collect-all=jinja2 \
-            launcher.py
-
-      - name: Move to releases
-        run: |
-          mkdir -p releases
-          cp dist/LuymasAI releases/LuymasAI-macos-x64
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LuymasAI-macos-x64
-          path: releases/LuymasAI-macos-x64
+          files: dist/${{ matrix.output }}

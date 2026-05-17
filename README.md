@@ -21,6 +21,7 @@
 
 ## 📑 Table of Contents
 
+- [Téléchargement direct](#-téléchargement-direct)
 - [Overview](#-overview)
 - [Architecture](#-architecture)
 - [Features](#-features)
@@ -253,17 +254,19 @@ Detects when the team needs a new member:
 
 ---
 
-## 📥 Download
+## 📥 Téléchargement direct
 
-### Pre-built Binaries
+### Binaires pré-compilés
 
 | Platform | File | Size | Instructions |
 |----------|------|------|-------------|
-| 🐧 **Linux** | `releases/LuymasAI-linux-x64` | ~60 MB | `chmod +x LuymasAI-linux-x64 && ./LuymasAI-linux-x64` |
-| 🪟 **Windows** | `releases/LuymasAI.exe` | ~60 MB | Double-click to launch |
-| 🍎 **macOS** | `releases/LuymasAI-macos-x64` | ~60 MB | `chmod +x LuymasAI-macos-x64 && ./LuymasAI-macos-x64` |
+| 🐧 **Linux** | [`releases/LuymasAI-linux-x64`](releases/LuymasAI-linux-x64) | ~60 MB | `chmod +x LuymasAI-linux-x64 && ./LuymasAI-linux-x64` |
+| 🪟 **Windows** | [`releases/LuymasAI.exe`](releases/LuymasAI.exe) | ~60 MB | Double-click to launch |
+| 🍎 **macOS** | [`releases/LuymasAI-macos-x64`](releases/LuymasAI-macos-x64) | ~60 MB | `chmod +x LuymasAI-macos-x64 && ./LuymasAI-macos-x64` |
 
-> 💡 **Windows & macOS builds** are automatically generated via GitHub Actions when a new version tag is pushed. See [Building from Source](#-building-from-source) for manual builds.
+> 💡 **Windows .exe & macOS builds** are automatically generated via **GitHub Actions** when a new version tag (`v*`) is pushed. The Linux binary is built directly in this repository. To trigger a cross-platform build, push a tag: `git tag v1.0.0 && git push --tags`
+>
+> 📦 You can also download the latest builds from the [**GitHub Releases**](https://github.com/ebrill82/luymas-ai/releases) page.
 
 ### What happens when you launch the executable:
 1. ✅ Detects if Ollama is installed
@@ -271,6 +274,11 @@ Detects when the team needs a new member:
 3. ✅ Opens your browser to the Studio dashboard
 4. ✅ Starts the Orchestrator with all 11 agents in the background
 5. ✅ Ready to use — just type your project description!
+
+### Prerequisites for the executable
+- **Ollama** must be installed separately: [ollama.com/download](https://ollama.com/download)
+- At least one AI model downloaded: `ollama pull deepseek-r1:8b`
+- **No Python installation required** — the executable is self-contained
 
 ### Building from Source
 
@@ -289,8 +297,21 @@ python launcher.py
 **Build your own executable:**
 ```bash
 pip install pyinstaller
-python build_exe.py          # Current platform
+python build_exe.py          # Current platform (onedir)
 python build_windows_exe.py  # Windows .exe (requires Windows or Wine)
+```
+
+**Or use the PyInstaller spec file directly:**
+```bash
+pip install pyinstaller
+pyinstaller LuymasAI.spec --noconfirm   # One-file build
+```
+
+**Cross-platform build via GitHub Actions:**
+```bash
+git tag v1.0.0
+git push --tags
+# This triggers .github/workflows/build.yml → builds .exe for Windows, Linux, macOS
 ```
 
 ---
