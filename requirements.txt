@@ -1,0 +1,54 @@
+# =============================================================================
+# Luymas AI — Python Dependencies
+# =============================================================================
+# Install: pip install -r requirements.txt
+# Python: 3.11+
+# =============================================================================
+
+# ---- Core AI / LLM ----
+ollama>=0.4.0                # Ollama Python client for local model inference
+openai>=1.30.0               # OpenAI API compatibility layer (optional cloud fallback)
+huggingface_hub>=0.23.0      # HuggingFace model downloading and management
+
+# ---- Configuration & Environment ----
+pyyaml>=6.0.1                # YAML parsing for config files
+python-dotenv>=1.0.1         # .env file loading for environment variables
+
+# ---- HTTP & Networking ----
+requests>=2.32.0             # HTTP library for API calls and web interactions
+aiohttp>=3.9.5               # Async HTTP client/server for concurrent operations
+websockets>=12.0             # WebSocket support for real-time communication
+
+# ---- Browser Automation ----
+playwright>=1.44.0           # Browser automation for web scraping and testing
+
+# ---- Audio & OCR ----
+openai-whisper>=20231117     # Speech-to-text transcription
+pytesseract>=0.3.10          # OCR text extraction from images
+
+# ---- Image Processing ----
+Pillow>=10.3.0               # Image manipulation and processing
+
+# ---- Document Generation ----
+reportlab>=4.2.0             # PDF generation from templates and data
+
+# ---- Messaging ----
+python-telegram-bot>=21.3    # Telegram bot API integration
+
+# ---- Web Framework ----
+flask>=3.0.3                 # Lightweight web server for API and dashboard
+
+# ---- Infrastructure ----
+docker>=7.1.0                # Docker SDK for container management
+gitpython>=3.1.43            # Git repository operations
+
+# ---- Scheduling & Task Management ----
+schedule>=1.2.2              # Job scheduling for recurring tasks
+
+# ---- CLI ----
+rich>=13.7.1                 # Rich terminal output and formatting
+click>=8.1.7                 # CLI framework for command-line interface
+
+# ---- Data Processing (transitive dependencies) ----
+numpy>=1.26.4                # Numerical computing (required by whisper, reportlab)
+pydantic>=2.7.0              # Data validation and settings management

@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  luymas:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: luymas-ai
+    ports:
+      - "8000:8000"   # Luymas API
+      - "8501:8501"   # Studio web interface
+    volumes:
+      - ../data:/app/data
+      - ../logs:/app/logs
+      - ../design/assets:/app/design/assets
+    env_file:
+      - ../.env
+    depends_on:
+      - ollama
+      - flaresolverr
+    restart: unless-stopped
+    networks:
+      - luymas-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: luymas-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - luymas-network
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: luymas-flaresolverr
+    ports:
+      - "8191:8191"
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+    restart: unless-stopped
+    networks:
+      - luymas-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: luymas-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - luymas-network
+
+volumes:
+  ollama-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  luymas-network:
+    driver: bridge

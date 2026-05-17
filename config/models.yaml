@@ -1,0 +1,474 @@
+# =============================================================================
+# Luymas AI — Model Configuration
+# =============================================================================
+# Complete listing of all recommended models for the Luymas multi-agent system.
+# Each model entry includes download info, hardware requirements, and benchmarks.
+# =============================================================================
+
+models:
+  # ===========================================================================
+  # REASONING MODELS
+  # ===========================================================================
+
+  - name: "DeepSeek-V4-Pro"
+    ollama_tag: "deepseek-v4-pro"
+    huggingface_id: "deepseek-ai/DeepSeek-V4-Pro"
+    category: "reasoning"
+    parameters: "685B (MoE, ~37B active)"
+    size_gb: 40
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 64
+    min_vram_gb: 48
+    recommended_ram_gb: 128
+    recommended_vram_gb: 64
+    benchmark_scores:
+      mmlu: 91.2
+      gpqa: 71.4
+      math: 89.5
+      humaneval: 95.1
+      swebench_verified: 72.3
+    speed_tokens_per_sec: 12
+    context_window: 128000
+    license: "DeepSeek License (permissive non-commercial, commercial with attribution)"
+    download_command: "ollama pull deepseek-v4-pro"
+    huggingface_download: "huggingface-cli download deepseek-ai/DeepSeek-V4-Pro"
+    notes: "Strongest open-source reasoning model. Requires multi-GPU or high-end single GPU (A100/H100). MoE architecture means only 37B active parameters during inference."
+
+  - name: "Qwen3:30b"
+    ollama_tag: "qwen3:30b"
+    huggingface_id: "Qwen/Qwen3-30B"
+    category: "reasoning"
+    parameters: "30B"
+    size_gb: 20
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 24
+    min_vram_gb: 20
+    recommended_ram_gb: 32
+    recommended_vram_gb: 24
+    benchmark_scores:
+      mmlu: 86.0
+      gpqa: 58.3
+      humaneval: 84.1
+    speed_tokens_per_sec: 35
+    context_window: 131072
+    license: "Apache 2.0"
+    download_command: "ollama pull qwen3:30b"
+    huggingface_download: "huggingface-cli download Qwen/Qwen3-30B"
+    notes: "Best overall model on consumer hardware. Excellent balance of quality and speed. Primary model for most agents."
+
+  - name: "DeepSeek-R1 (8B Distill)"
+    ollama_tag: "deepseek-r1:8b"
+    huggingface_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-8B"
+    category: "reasoning"
+    parameters: "8B"
+    size_gb: 5
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 8
+    min_vram_gb: 6
+    recommended_ram_gb: 12
+    recommended_vram_gb: 8
+    benchmark_scores:
+      mmlu: 74.8
+      math: 72.1
+      humaneval: 72.1
+    speed_tokens_per_sec: 45
+    context_window: 131072
+    license: "MIT"
+    download_command: "ollama pull deepseek-r1:8b"
+    huggingface_download: "huggingface-cli download deepseek-ai/DeepSeek-R1-Distill-Qwen-8B"
+    notes: "Best reasoning model for 8GB RAM. Transparent chain-of-thought reasoning. Essential for sandbox environment."
+
+  - name: "DeepSeek-R1 (14B Distill)"
+    ollama_tag: "deepseek-r1:14b"
+    huggingface_id: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+    category: "reasoning"
+    parameters: "14B"
+    size_gb: 9
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 12
+    min_vram_gb: 10
+    recommended_ram_gb: 16
+    recommended_vram_gb: 12
+    benchmark_scores:
+      mmlu: 80.2
+      math: 78.5
+      humaneval: 78.5
+    speed_tokens_per_sec: 32
+    context_window: 131072
+    license: "MIT"
+    download_command: "ollama pull deepseek-r1:14b"
+    huggingface_download: "huggingface-cli download deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+    notes: "Step up from 8B with significantly better reasoning. Good for 16GB RAM setups."
+
+  - name: "DeepSeek-R1 (Full 671B)"
+    ollama_tag: "deepseek-r1"
+    huggingface_id: "deepseek-ai/DeepSeek-R1"
+    category: "reasoning"
+    parameters: "671B (MoE, ~37B active)"
+    size_gb: 80
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 128
+    min_vram_gb: 48
+    recommended_ram_gb: 256
+    recommended_vram_gb: 80
+    benchmark_scores:
+      mmlu: 91.6
+      gpqa: 71.5
+      math: 92.8
+      humaneval: 97.4
+    speed_tokens_per_sec: 10
+    context_window: 131072
+    license: "MIT"
+    download_command: "ollama pull deepseek-r1"
+    huggingface_download: "huggingface-cli download deepseek-ai/DeepSeek-R1"
+    notes: "Full DeepSeek-R1 model. Best open-source reasoning but requires serious hardware. Premium tier only."
+
+  - name: "Qwen3.5"
+    ollama_tag: "qwen3.5"
+    huggingface_id: "Qwen/Qwen3.5-32B"
+    category: "reasoning"
+    parameters: "32B"
+    size_gb: 20
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 24
+    min_vram_gb: 20
+    recommended_ram_gb: 32
+    recommended_vram_gb: 24
+    benchmark_scores:
+      mmlu: 87.5
+      humaneval: 86.2
+    speed_tokens_per_sec: 33
+    context_window: 131072
+    license: "Apache 2.0"
+    download_command: "ollama pull qwen3.5"
+    huggingface_download: "huggingface-cli download Qwen/Qwen3.5-32B"
+    notes: "Latest in Qwen series with improved reasoning and fewer hallucinations. Upgrade path from Qwen3."
+
+  - name: "Gemma 4 (26B)"
+    ollama_tag: "gemma4:26b"
+    huggingface_id: "google/gemma-4-26b"
+    category: "reasoning"
+    parameters: "26B"
+    size_gb: 16
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 20
+    min_vram_gb: 16
+    recommended_ram_gb: 32
+    recommended_vram_gb: 20
+    benchmark_scores:
+      mmlu: 83.7
+      humaneval: 79.8
+    speed_tokens_per_sec: 85
+    context_window: 131072
+    license: "Gemma License (permissive, commercial allowed)"
+    download_command: "ollama pull gemma4:26b"
+    huggingface_download: "huggingface-cli download google/gemma-4-26b"
+    notes: "Fastest model on consumer hardware at 85 t/s. Best for real-time interactions. Google-quality training."
+
+  # ===========================================================================
+  # CODING MODELS
+  # ===========================================================================
+
+  - name: "Qwen2.5-Coder 32B"
+    ollama_tag: "qwen2.5-coder:32b"
+    huggingface_id: "Qwen/Qwen2.5-Coder-32B"
+    category: "coding"
+    parameters: "32B"
+    size_gb: 20
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 24
+    min_vram_gb: 20
+    recommended_ram_gb: 32
+    recommended_vram_gb: 24
+    benchmark_scores:
+      humaneval: 92.7
+      livecodebench: 68.4
+      swebench_verified: 52.3
+    speed_tokens_per_sec: 30
+    context_window: 131072
+    license: "Apache 2.0"
+    download_command: "ollama pull qwen2.5-coder:32b"
+    huggingface_download: "huggingface-cli download Qwen/Qwen2.5-Coder-32B"
+    notes: "Best local coding model. 92.7% HumanEval is outstanding. Primary model for Code Agent and DevOps Agent."
+
+  - name: "Qwen2.5-Coder 7B"
+    ollama_tag: "qwen2.5-coder:7b"
+    huggingface_id: "Qwen/Qwen2.5-Coder-7B"
+    category: "coding"
+    parameters: "7B"
+    size_gb: 4.5
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 8
+    min_vram_gb: 4
+    recommended_ram_gb: 12
+    recommended_vram_gb: 6
+    benchmark_scores:
+      humaneval: 84.1
+      livecodebench: 48.7
+    speed_tokens_per_sec: 55
+    context_window: 131072
+    license: "Apache 2.0"
+    download_command: "ollama pull qwen2.5-coder:7b"
+    huggingface_download: "huggingface-cli download Qwen/Qwen2.5-Coder-7B"
+    notes: "Fits in 8GB RAM. Good for basic coding tasks. Best coding option for sandbox environment."
+
+  - name: "DeepSeek-Coder-V2 Lite"
+    ollama_tag: "deepseek-coder-v2-lite"
+    huggingface_id: "deepseek-ai/DeepSeek-Coder-V2-Lite"
+    category: "coding"
+    parameters: "16B (MoE, ~2.4B active)"
+    size_gb: 9
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 8
+    min_vram_gb: 6
+    recommended_ram_gb: 16
+    recommended_vram_gb: 8
+    benchmark_scores:
+      humaneval: 81.1
+      livecodebench: 52.3
+    speed_tokens_per_sec: 50
+    context_window: 131072
+    license: "DeepSeek License"
+    download_command: "ollama pull deepseek-coder-v2-lite"
+    huggingface_download: "huggingface-cli download deepseek-ai/DeepSeek-Coder-V2-Lite"
+    notes: "MoE architecture gives excellent speed (only 2.4B active). Best coding speed on 8GB RAM. Alternative to Qwen2.5-Coder 7B."
+
+  - name: "Kimi K2.5"
+    ollama_tag: "kimi-k2.5"
+    huggingface_id: "moonshotai/Kimi-K2.5"
+    category: "coding"
+    parameters: "1T (MoE)"
+    size_gb: 180
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 256
+    min_vram_gb: 48
+    recommended_ram_gb: 384
+    recommended_vram_gb: 96
+    benchmark_scores:
+      humaneval: 99.0
+      livecodebench: 85.0
+      swebench_verified: 77.8
+    speed_tokens_per_sec: 8
+    context_window: 131072
+    license: "MIT"
+    download_command: "huggingface-cli download moonshotai/Kimi-K2.5"
+    huggingface_download: "huggingface-cli download moonshotai/Kimi-K2.5"
+    notes: "Strongest open-source coding model. 1T MoE parameters. Only viable on multi-GPU setups or cloud. Premium tier only."
+
+  - name: "GLM-5"
+    ollama_tag: "glm5"
+    huggingface_id: "THUDM/GLM-5"
+    category: "coding"
+    parameters: "130B"
+    size_gb: 75
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 96
+    min_vram_gb: 48
+    recommended_ram_gb: 128
+    recommended_vram_gb: 64
+    benchmark_scores:
+      humaneval: 90.0
+      swebench_verified: 77.8
+    speed_tokens_per_sec: 15
+    context_window: 200000
+    license: "Apache 2.0"
+    download_command: "ollama pull glm5"
+    huggingface_download: "huggingface-cli download THUDM/GLM-5"
+    notes: "Best for bug fixing (SWE-bench Verified parity with strong real-world performance). 200K context excellent for large codebase analysis."
+
+  # ===========================================================================
+  # IMAGE GENERATION MODELS
+  # ===========================================================================
+
+  - name: "FLUX.2"
+    ollama_tag: "flux2-schnell"
+    huggingface_id: "black-forest-labs/FLUX.2-dev"
+    category: "image"
+    parameters: "12B"
+    size_gb: 24
+    size_quantization: "FP16 (dev) / Distilled (schnell)"
+    min_ram_gb: 32
+    min_vram_gb: 12
+    recommended_ram_gb: 48
+    recommended_vram_gb: 24
+    benchmark_scores:
+      clip_score: 0.82
+      fid: 8.4
+    speed_tokens_per_sec: null  # Image generation, measured in seconds per image
+    context_window: null
+    license: "FLUX.1-dev License (non-commercial) / Apache 2.0 (schnell)"
+    download_command: "ollama pull flux2-schnell"
+    huggingface_download: "huggingface-cli download black-forest-labs/FLUX.2-dev"
+    notes: "Best open-source image gen. Schnell variant is Apache 2.0 and runs on 12GB VRAM. Dev variant needs 24GB VRAM. Outstanding prompt adherence and typography."
+
+  - name: "Stable Diffusion 3.5 Medium"
+    ollama_tag: "sd3.5-medium"
+    huggingface_id: "stabilityai/stable-diffusion-3.5-medium"
+    category: "image"
+    parameters: "2B"
+    size_gb: 5
+    size_quantization: "FP16"
+    min_ram_gb: 8
+    min_vram_gb: 6
+    recommended_ram_gb: 16
+    recommended_vram_gb: 8
+    benchmark_scores:
+      clip_score: 0.74
+      fid: 14.2
+    speed_tokens_per_sec: null
+    context_window: null
+    license: "Stability AI Community License (free, commercial under $1M revenue)"
+    download_command: "huggingface-cli download stabilityai/stable-diffusion-3.5-medium"
+    huggingface_download: "huggingface-cli download stabilityai/stable-diffusion-3.5-medium"
+    notes: "Free and open-source. 2B params runs on any hardware. Lower quality than FLUX but excellent for resource-constrained environments."
+
+  - name: "HunyuanImage 3.0"
+    ollama_tag: "hunyuanimage-3.0"
+    huggingface_id: "tencent/HunyuanImage-3.0"
+    category: "image"
+    parameters: "13B"
+    size_gb: 26
+    size_quantization: "FP16 / Q8"
+    min_ram_gb: 32
+    min_vram_gb: 16
+    recommended_ram_gb: 48
+    recommended_vram_gb: 24
+    benchmark_scores:
+      clip_score: 0.80
+      fid: 9.1
+    speed_tokens_per_sec: null
+    context_window: null
+    license: "Tencent Hunyuan License (permissive)"
+    download_command: "huggingface-cli download tencent/HunyuanImage-3.0"
+    huggingface_download: "huggingface-cli download tencent/HunyuanImage-3.0"
+    notes: "Strong FLUX competitor. Excellent multilingual support (especially CJK). Good for non-English image generation."
+
+  - name: "Z-Image Turbo"
+    ollama_tag: "z-image-turbo"
+    huggingface_id: "alibaba/z-image-turbo"
+    category: "image"
+    parameters: "6B"
+    size_gb: 4
+    size_quantization: "Q4"
+    min_ram_gb: 8
+    min_vram_gb: 6
+    recommended_ram_gb: 12
+    recommended_vram_gb: 8
+    benchmark_scores:
+      clip_score: 0.76
+    speed_tokens_per_sec: null
+    context_window: null
+    license: "Apache 2.0"
+    download_command: "ollama pull z-image-turbo"
+    huggingface_download: "huggingface-cli download alibaba/z-image-turbo"
+    notes: "First-party Ollama image gen support. Photorealistic with bilingual prompts (EN+ZH). Best for sandbox and constrained environments."
+
+  # ===========================================================================
+  # SECURITY / CODE REVIEW MODELS
+  # (Uses reasoning models with specific configurations)
+  # ===========================================================================
+
+  - name: "Qwen3:30b (Review Config)"
+    ollama_tag: "qwen3:30b"
+    huggingface_id: "Qwen/Qwen3-30B"
+    category: "review"
+    parameters: "30B"
+    size_gb: 20
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 24
+    min_vram_gb: 20
+    recommended_ram_gb: 32
+    recommended_vram_gb: 24
+    benchmark_scores:
+      mmlu: 86.0
+      humaneval: 84.1
+      code_review_accuracy: "High"
+    speed_tokens_per_sec: 35
+    context_window: 131072
+    license: "Apache 2.0"
+    download_command: "ollama pull qwen3:30b"
+    huggingface_download: "huggingface-cli download Qwen/Qwen3-30B"
+    notes: "Same Qwen3:30b model used for reasoning but with low temperature (0.1) and security-focused system prompt for code review tasks."
+
+  - name: "DeepSeek-V4-Pro (Security Config)"
+    ollama_tag: "deepseek-v4-pro"
+    huggingface_id: "deepseek-ai/DeepSeek-V4-Pro"
+    category: "review"
+    parameters: "685B (MoE, ~37B active)"
+    size_gb: 40
+    size_quantization: "Q4_K_M"
+    min_ram_gb: 64
+    min_vram_gb: 48
+    recommended_ram_gb: 128
+    recommended_vram_gb: 64
+    benchmark_scores:
+      mmlu: 91.2
+      humaneval: 95.1
+      security_analysis: "Frontier-level"
+    speed_tokens_per_sec: 12
+    context_window: 128000
+    license: "DeepSeek License"
+    download_command: "ollama pull deepseek-v4-pro"
+    huggingface_download: "huggingface-cli download deepseek-ai/DeepSeek-V4-Pro"
+    notes: "DeepSeek-V4-Pro configured for deep security analysis. Can identify subtle vulnerabilities and complex attack vectors. Premium tier only."
+
+# =============================================================================
+# Hardware Tier Quick Reference
+# =============================================================================
+hardware_tiers:
+  tier1:
+    description: "8GB RAM, no GPU (sandbox / minimal)"
+    models:
+      - "deepseek-r1:8b"
+      - "qwen2.5-coder:7b"
+      - "deepseek-coder-v2-lite"
+      - "z-image-turbo"
+    max_concurrent_models: 1
+    total_disk_gb: 25
+
+  tier2:
+    description: "16GB RAM, no GPU"
+    models:
+      - "deepseek-r1:14b"
+      - "qwen3:14b"
+      - "qwen2.5-coder:7b"
+      - "gemma4:9b"
+      - "z-image-turbo"
+    max_concurrent_models: 2
+    total_disk_gb: 50
+
+  tier3:
+    description: "32GB RAM + 12GB VRAM GPU"
+    models:
+      - "qwen3:30b"
+      - "qwen2.5-coder:32b"
+      - "gemma4:26b"
+      - "deepseek-r1:14b"
+      - "flux2-schnell"
+    max_concurrent_models: 2
+    total_disk_gb: 80
+
+  tier4:
+    description: "64GB RAM + 24GB VRAM GPU"
+    models:
+      - "qwen3.5"
+      - "qwen2.5-coder:32b"
+      - "gemma4:26b"
+      - "glm5"
+      - "flux2-dev"
+      - "deepseek-r1:14b"
+    max_concurrent_models: 3
+    total_disk_gb: 150
+
+  tier5:
+    description: "128GB+ RAM + 48GB+ VRAM GPU (premium)"
+    models:
+      - "deepseek-v4-pro"
+      - "kimi-k2.5"
+      - "deepseek-r1:671b"
+      - "glm5"
+      - "flux2-dev"
+      - "qwen3.5"
+      - "qwen2.5-coder:32b"
+    max_concurrent_models: 4
+    total_disk_gb: 500

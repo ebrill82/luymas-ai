@@ -1,0 +1,17 @@
+{
+  "last_scan": "2026-05-17T14:49:51.203698+00:00",
+  "proposals": {},
+  "snapshots": {
+    "test_palette": {
+      "design_id": "test_palette",
+      "category": "color_palette",
+      "data": {
+        "primary": "#000000",
+        "secondary": "#FFFFFF"
+      },
+      "hash": "42efdb3ff83fcfa7",
+      "timestamp": "2026-05-17T14:49:51.203643+00:00",
+      "description": "Current color_palette design"
+    }
+  }
+}
