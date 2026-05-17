@@ -253,20 +253,62 @@ Detects when the team needs a new member:
 
 ---
 
+## 📥 Download
+
+### Pre-built Binaries
+
+| Platform | File | Size | Instructions |
+|----------|------|------|-------------|
+| 🐧 **Linux** | `releases/LuymasAI-linux-x64` | ~60 MB | `chmod +x LuymasAI-linux-x64 && ./LuymasAI-linux-x64` |
+| 🪟 **Windows** | `releases/LuymasAI.exe` | ~60 MB | Double-click to launch |
+| 🍎 **macOS** | `releases/LuymasAI-macos-x64` | ~60 MB | `chmod +x LuymasAI-macos-x64 && ./LuymasAI-macos-x64` |
+
+> 💡 **Windows & macOS builds** are automatically generated via GitHub Actions when a new version tag is pushed. See [Building from Source](#-building-from-source) for manual builds.
+
+### What happens when you launch the executable:
+1. ✅ Detects if Ollama is installed
+2. ✅ Starts the Studio web server on `http://localhost:5000`
+3. ✅ Opens your browser to the Studio dashboard
+4. ✅ Starts the Orchestrator with all 11 agents in the background
+5. ✅ Ready to use — just type your project description!
+
+### Building from Source
+
+**Windows:**
+```batch
+install.bat
+launcher.bat
+```
+
+**Linux / macOS:**
+```bash
+chmod +x install.sh && ./install.sh
+python launcher.py
+```
+
+**Build your own executable:**
+```bash
+pip install pyinstaller
+python build_exe.py          # Current platform
+python build_windows_exe.py  # Windows .exe (requires Windows or Wine)
+```
+
+---
+
 ## ⚡ Quick Start
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/luymas-ai.git && cd luymas-ai
+git clone https://github.com/ebrill82/luymas-ai.git && cd luymas-ai
 
 # 2. Run the installer
 chmod +x install.sh && ./install.sh
 
-# 3. Start Luymas AI
-source venv/bin/activate && python main.py
+# 3. Start Luymas AI (with Studio web interface)
+python launcher.py
 ```
 
-That's it! The installer handles Ollama, models, Python dependencies, and configuration.
+That's it! The installer handles Ollama, models, Python dependencies, and configuration. The Studio opens automatically in your browser at `http://localhost:5000`.
 
 ---
 
@@ -453,15 +495,26 @@ QA            → deepseek-r1:671b  (full R1 for testing)
 
 ```
 luymas-ai/
-├── main.py                     # 🚀 Entry point — starts the system
-├── install.sh                  # 📦 Automated installation script
+├── launcher.py                 # 🚀 Main entry point (Flask + Orchestrator + Browser)
+├── main.py                     # 📟 CLI entry point (interactive mode)
+├── install.sh                  # 📦 Linux/macOS installation script
+├── install.bat                 # 📦 Windows installation script
+├── launcher.bat                # 🪟 Windows quick-start
+├── build_exe.py                # 🔨 PyInstaller build script
+├── build_windows_exe.py        # 🪟 Windows .exe cross-compilation
+├── luymas.spec                 # 📋 PyInstaller spec file
 ├── requirements.txt            # 🐍 Python dependencies (22 packages)
 ├── .env.example                # 🔑 Environment variable template
 ├── README.md                   # 📖 This file
 ├── research.md                 # 📚 Model research & benchmarks
+├── installed_models.md         # 📊 Installed models & hardware tiers
+│
+├── releases/                   # 📥 Pre-built binaries
+│   └── LuymasAI-linux-x64      #    Linux executable (~60 MB)
 │
 ├── agents/                     # 🤖 All 11 AI agents
 │   ├── __init__.py             #    Registry, factory, imports
+│   ├── base.py                 #    BaseAgent, AgentStatus, AgentMessage
 │   ├── pdg.py                  #    🏢 CEO / Supreme Orchestrator
 │   ├── pm.py                   #    📋 Product Manager
 │   ├── architect.py            #    🏛️ Software Architect
@@ -475,7 +528,6 @@ luymas-ai/
 │   └── talent_scout.py         #    🔍 Team Builder
 │
 ├── core/                       # 🧠 Core system modules
-│   ├── __init__.py             #    Module exports
 │   ├── orchestrator.py         #    Multi-Agent Orchestrator & Message Bus
 │   ├── messenger.py            #    WhatsApp / Telegram Integration
 │   ├── memory.py               #    Knowledge Mesh (shared memory)
@@ -494,37 +546,31 @@ luymas-ai/
 │   └── models.yaml             #    Model catalog & benchmarks
 │
 ├── design/                     # 🎨 Design system
-│   ├── __init__.py
-│   ├── design_plugins.py       #    Design plugin system
-│   ├── design_updater.py       #    Trend monitoring & updates
-│   └── image_generator.py      #    AI image generation
+│   ├── image_generator.py      #    AI image generation (FLUX.1/SD3/Z-Image)
+│   ├── design_plugins.py       #    Design plugin system (colors, typo, layout)
+│   └── design_updater.py       #    Trend monitoring & freshness scorer
 │
-├── studio/                     # 🖥️ Web interface (Studio)
-│   ├── index.html              #    SPA with 6 views
-│   ├── style.css               #    Dark theme + glassmorphism
-│   └── app.js                  #    Complete JavaScript application
+├── studio/                     # 🖥️ Web interface (8 views)
+│   ├── index.html              #    SPA with Dashboard, Agents, Projects, etc.
+│   ├── style.css               #    GitHub-dark theme + responsive
+│   └── app.js                  #    Complete JS application (8 classes)
 │
 ├── templates/                  # 📋 Project templates
 │   ├── web/                    #    Next.js + TypeScript + Tailwind
-│   │   ├── src/app/
-│   │   └── package.json
 │   ├── mobile/                 #    React Native + Expo
-│   │   ├── App.tsx
-│   │   └── package.json
 │   └── desktop/                #    Tauri + React
-│       ├── src/App.tsx
-│       ├── src-tauri/
-│       └── package.json
 │
 ├── docker/                     # 🐳 Docker deployment
 │   ├── Dockerfile              #    Multi-stage production build
 │   ├── docker-compose.yml      #    Full stack (Luymas + Ollama + Redis + FlareSolverr)
 │   └── entrypoint.sh           #    Container entry point
 │
+├── .github/workflows/          # 🔄 GitHub Actions CI/CD
+│   └── build.yml               #    Auto-build .exe for Windows/Linux/macOS
+│
 ├── data/                       # 💾 Persistent data storage
 ├── logs/                       # 📝 System logs
 ├── models/                     # 🧠 Downloaded model files
-├── output/                     # 📤 Agent outputs & reports
 └── tests/                      # 🧪 Test suite
     └── test_agents.py
 ```
@@ -733,34 +779,36 @@ When Ops deploys an application, the PDG injects API keys that connect the app b
 
 ## 🖥️ Studio
 
-Luymas Studio is the web interface for controlling and monitoring the system.
+Luymas Studio is the web interface for controlling and monitoring the system. Access it at **http://localhost:5000** after launching.
 
-### Features
+### 8 Interactive Views
 
 | View | Description |
 |------|-------------|
-| **Dashboard** | System overview, agent status grid, activity feed, quick actions, system health |
-| **Agents** | Per-agent controls (start/stop/pause), individual chat, skill explorer |
-| **Projects** | Full CRUD, status filtering, timeline visualization, deploy pipeline |
-| **War Room** | Thread-based messaging, approval queue overlay, team coordination |
-| **Analytics** | 4 metric cards + 4 detail panels for performance tracking |
-| **Settings** | Models, Messaging, Security, Email, Identity, System configuration |
+| 🏠 **Dashboard** | System overview, agent status grid, activity feed, quick actions, system health, pending approvals |
+| 🤖 **Agents** | Per-agent controls (start/stop/pause), individual chat, memory viewer, skill explorer |
+| 📋 **Projects** | Full CRUD, status filtering, timeline visualization, deploy pipeline (Web/Mobile/Desktop) |
+| 💬 **War Room** | Thread-based messaging, slash commands (`/status`, `/models`, `/deploy`), approval queue |
+| 🖥️ **Terminal** | Real-time log viewer with command input, log level filtering, full-screen mode |
+| 🎨 **Design** | Image gallery, AI image generation form, design system preview, trend alerts, freshness score |
+| 📁 **Files** | File tree browser, content viewer with syntax highlighting, download |
+| ⚙️ **Settings** | Models, Messaging, Security, Email, Identity, System configuration |
 
 ### Access
 
 ```bash
-# Start Studio
-python -m luymas.studio
+# Start with Studio (auto-opens browser)
+python launcher.py
 
-# Open in browser
-open http://localhost:8501
+# Or start manually
+python -m flask --app launcher run --port 5000
 ```
 
 ### Tech Stack
 
-- **HTML** — Semantic SPA with 6 views
-- **CSS** — 80+ custom properties, glassmorphism, dark command-center theme
-- **JavaScript** — Class-based OOP with StateManager, WebSocketManager, Router, APIClient
+- **HTML** — Semantic SPA with 8 views
+- **CSS** — 80+ custom properties, GitHub-dark theme, responsive design
+- **JavaScript** — 8 ES6+ classes: APIClient, WebSocketManager, TerminalEmulator, ChatManager, FileManager, DesignManager, ToastManager, ModalManager
 
 ### Key Capabilities
 
