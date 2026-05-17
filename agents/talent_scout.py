@@ -10,71 +10,12 @@ the PDG to the user.
 Examples of detected needs: SEO Agent, i18n Agent, Legal Agent, DocuMind Agent
 """
 
-from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
-from enum import Enum
-import asyncio
 import json
 import logging
-import time
 from datetime import datetime, timezone
 
-
-class AgentStatus(Enum):
-    IDLE = "idle"
-    WORKING = "working"
-    WAITING_APPROVAL = "waiting_approval"
-    ERROR = "error"
-
-
-@dataclass
-class AgentMessage:
-    sender: str
-    recipient: str
-    content: str
-    message_type: str = "text"
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    timestamp: float = 0.0
-
-
-class BaseAgent:
-    """Base class for all Luymas agents."""
-
-    def __init__(self, name: str, role: str, email: str, model: str = ""):
-        self.name = name
-        self.role = role
-        self.email = email
-        self.model = model
-        self.status = AgentStatus.IDLE
-        self.memory: List[Dict] = []
-        self.skills: List[str] = []
-        self.logger = logging.getLogger(f"luymas.{name}")
-
-    async def receive_message(self, message: AgentMessage) -> Optional[AgentMessage]:
-        self.memory.append({"role": "received", "message": message})
-        return await self.process(message)
-
-    async def process(self, message: AgentMessage) -> Optional[AgentMessage]:
-        raise NotImplementedError
-
-    async def send_message(self, recipient: str, content: str, msg_type: str = "text") -> AgentMessage:
-        msg = AgentMessage(
-            sender=self.name, recipient=recipient,
-            content=content, message_type=msg_type,
-            timestamp=time.time(),
-        )
-        self.memory.append({"role": "sent", "message": msg})
-        return msg
-
-    async def request_approval(self, action: str, details: str) -> bool:
-        self.status = AgentStatus.WAITING_APPROVAL
-        return False
-
-    def get_status(self) -> Dict[str, Any]:
-        return {
-            "name": self.name, "role": self.role,
-            "status": self.status.value, "memory_size": len(self.memory),
-        }
+from agents.base import BaseAgent, AgentStatus, AgentMessage
 
 
 class TalentScoutAgent(BaseAgent):

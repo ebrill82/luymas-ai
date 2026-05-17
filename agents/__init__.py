@@ -38,8 +38,8 @@ from agents.ops import OpsAgent
 from agents.caretaker import CaretakerAgent
 from agents.talent_scout import TalentScoutAgent
 
-# Re-export base classes for convenience
-from agents.pdg import BaseAgent, AgentStatus, AgentMessage
+# Re-export base classes from the shared base module
+from agents.base import BaseAgent, AgentStatus, AgentMessage
 
 __all__ = [
     # Base classes

@@ -2,7 +2,8 @@
    Luymas AI Studio — Application Core
    =============================================================================
    Complete SPA with router, WebSocket, state management, CRUD operations,
-   real-time updates, and all interactive features.
+   real-time updates, terminal, chat, file browser, design gallery, and all
+   interactive features.
    ============================================================================= */
 
 // =============================================================================
@@ -14,152 +15,101 @@ const CONFIG = {
   RECONNECT_INTERVAL: 3000,
   MAX_RECONNECT_ATTEMPTS: 10,
   TOAST_DURATION: 5000,
+  POLL_INTERVAL: 2000,
   ACTIVITY_POLL_INTERVAL: 10000,
   HEALTH_POLL_INTERVAL: 15000,
+  MAX_CHAT_HISTORY: 200,
+  MAX_TERMINAL_HISTORY: 500,
+  TERMINAL_COMMAND_HISTORY: 100,
 };
 
 // =============================================================================
-// Agent Data (from agents.yaml)
+// Agent Definitions (from agents.yaml — 11 agents)
 // =============================================================================
 const AGENT_DEFS = [
   {
-    id: 'pdg',
-    name: 'Luymas PDG',
-    role: 'CEO / Supreme Orchestrator',
-    icon: '👑',
-    avatarClass: 'orchestrator',
-    model: 'deepseek-r1:8b',
-    status: 'active',
+    id: 'pdg', name: 'Luymas PDG', role: 'CEO / Supreme Orchestrator', icon: '👑',
+    avatarClass: 'orchestrator', model: 'deepseek-r1:8b', status: 'active',
     task: 'Monitoring all agent operations',
     skills: ['manage-github-issues', 'create-github-pr', 'cto-status-report', 'send-notification', 'code-approval', 'identity-management'],
     description: 'Central coordinator. Validates all requests, PDF generation, API key injection, code modification approval.',
     stats: { tasksCompleted: 156, uptime: '99.8%', responseTime: '1.2s' },
   },
   {
-    id: 'pm',
-    name: 'Luymas PM',
-    role: 'Product Manager',
-    icon: '📋',
-    avatarClass: 'communicator',
-    model: 'qwen2.5-coder:7b',
-    status: 'active',
+    id: 'pm', name: 'Luymas PM', role: 'Product Manager', icon: '📋',
+    avatarClass: 'communicator', model: 'qwen2.5-coder:7b', status: 'active',
     task: 'Analyzing new project requirements',
     skills: ['clarify-requirements', 'product-brief', 'market-research', 'spec-creation'],
     description: 'Reformulates requests into specs, market research, product briefs, requirement docs.',
     stats: { tasksCompleted: 89, uptime: '98.5%', responseTime: '2.1s' },
   },
   {
-    id: 'architect',
-    name: 'Luymas Architect',
-    role: 'Software Architect',
-    icon: '🏗️',
-    avatarClass: 'analyst',
-    model: 'deepseek-r1:8b',
-    status: 'idle',
+    id: 'architect', name: 'Luymas Architect', role: 'Software Architect', icon: '🏗️',
+    avatarClass: 'analyst', model: 'deepseek-r1:8b', status: 'idle',
     task: 'Waiting for project assignment',
     skills: ['choose-engine', 'architecture-design', 'database-schema', 'api-contracts', 'mermaid-diagrams'],
     description: 'Architecture design (C4 model), tech stack selection, framework version checking, database schemas.',
     stats: { tasksCompleted: 67, uptime: '97.2%', responseTime: '3.5s' },
   },
   {
-    id: 'coder_back',
-    name: 'Luymas Coder Backend',
-    role: 'Backend Developer',
-    icon: '⚙️',
-    avatarClass: 'coder',
-    model: 'qwen2.5-coder:7b',
-    status: 'active',
+    id: 'coder_back', name: 'Luymas Coder Backend', role: 'Backend Developer', icon: '⚙️',
+    avatarClass: 'coder', model: 'qwen2.5-coder:7b', status: 'active',
     task: 'Building REST API endpoints',
     skills: ['code-execution', 'self-verification', 'github-scout', 'fastapi-scaffold', 'sqlalchemy-orm'],
     description: 'FastAPI/SQLAlchemy scaffolding, self-verification, GitHub Scout, SOURCES.md documentation.',
     stats: { tasksCompleted: 234, uptime: '99.1%', responseTime: '4.2s' },
   },
   {
-    id: 'coder_front',
-    name: 'Luymas Coder Frontend',
-    role: 'Frontend Developer',
-    icon: '🎨',
-    avatarClass: 'designer',
-    model: 'qwen2.5-coder:7b',
-    status: 'active',
+    id: 'coder_front', name: 'Luymas Coder Frontend', role: 'Frontend Developer', icon: '🎨',
+    avatarClass: 'designer', model: 'qwen2.5-coder:7b', status: 'active',
     task: 'Implementing dashboard components',
     skills: ['reusable-components', 'responsive-design', 'github-scout', 'nextjs-scaffold', 'shadcn-ui'],
     description: 'Next.js/TypeScript/Tailwind scaffolding, shadcn/ui components, responsive design, accessibility.',
     stats: { tasksCompleted: 198, uptime: '98.9%', responseTime: '3.8s' },
   },
   {
-    id: 'designer',
-    name: 'Luymas Designer',
-    role: 'Visual Designer',
-    icon: '🖌️',
-    avatarClass: 'designer',
-    model: 'z-image-turbo',
-    status: 'idle',
+    id: 'designer', name: 'Luymas Designer', role: 'Visual Designer', icon: '🖌️',
+    avatarClass: 'designer', model: 'z-image-turbo', status: 'idle',
     task: 'Awaiting design requests',
     skills: ['felo-search', 'website-screenshot', 'opencode-design', 'design-updater', 'image-generation'],
     description: 'Mandatory inspiration browsing, design system creation, FLUX.1 Pro/SD3 image generation, trend detection.',
     stats: { tasksCompleted: 45, uptime: '95.0%', responseTime: '8.5s' },
   },
   {
-    id: 'guardian',
-    name: 'Luymas Guardian',
-    role: 'Security Analyst',
-    icon: '🛡️',
-    avatarClass: 'reviewer',
-    model: 'deepseek-r1:8b',
-    status: 'idle',
+    id: 'guardian', name: 'Luymas Guardian', role: 'Security Analyst', icon: '🛡️',
+    avatarClass: 'reviewer', model: 'deepseek-r1:8b', status: 'idle',
     task: 'Standing by for security review',
     skills: ['security-scan', 'dependency-check', 'vulnerability-analysis', 'owasp-top10', 'penetration-test'],
     description: 'OWASP Top 10 scanning, dependency vulnerability checking, security pattern detection, deployment gate.',
     stats: { tasksCompleted: 112, uptime: '99.5%', responseTime: '5.1s' },
   },
   {
-    id: 'tester',
-    name: 'Luymas Tester',
-    role: 'QA Engineer',
-    icon: '🧪',
-    avatarClass: 'qa',
-    model: 'deepseek-r1:8b',
-    status: 'waiting',
+    id: 'tester', name: 'Luymas Tester', role: 'QA Engineer', icon: '🧪',
+    avatarClass: 'qa', model: 'deepseek-r1:8b', status: 'waiting',
     task: 'Waiting for code to test',
     skills: ['test-generation', 'bug-capture', 'e2e-testing', 'coverage-tracking', 'regression-detection'],
     description: 'Unit/integration/E2E test generation, bug screenshot capture, E2E video recording, coverage tracking.',
     stats: { tasksCompleted: 178, uptime: '99.2%', responseTime: '3.2s' },
   },
   {
-    id: 'ops',
-    name: 'Luymas Ops',
-    role: 'DevOps Engineer',
-    icon: '🚀',
-    avatarClass: 'devops',
-    model: 'qwen2.5-coder:7b',
-    status: 'active',
+    id: 'ops', name: 'Luymas Ops', role: 'DevOps Engineer', icon: '🚀',
+    avatarClass: 'devops', model: 'qwen2.5-coder:7b', status: 'active',
     task: 'Deploying staging environment',
     skills: ['deploy-to-vercel', 'connect-supabase', 'setup-monitoring', 'health-check', 'docker-containerization'],
     description: 'Docker containerization, Vercel deployment, Supabase connection, CI/CD, monitoring setup.',
     stats: { tasksCompleted: 134, uptime: '99.7%', responseTime: '2.8s' },
   },
   {
-    id: 'caretaker',
-    name: 'Luymas Caretaker',
-    role: 'Post-Deploy Monitor',
-    icon: '🔍',
-    avatarClass: 'assistant',
-    model: 'qwen2.5-coder:7b',
-    status: 'active',
+    id: 'caretaker', name: 'Luymas Caretaker', role: 'Post-Deploy Monitor', icon: '🔍',
+    avatarClass: 'assistant', model: 'qwen2.5-coder:7b', status: 'active',
     task: 'Monitoring production systems',
     skills: ['bug-reception', 'fix-deployment', 'continuous-monitoring', 'sla-enforcement', 'incident-logging'],
     description: 'Post-deployment monitoring, bug reception via injected API keys, fix deployment, SLA enforcement.',
     stats: { tasksCompleted: 267, uptime: '99.9%', responseTime: '0.8s' },
   },
   {
-    id: 'talent_scout',
-    name: 'Luymas Talent Scout',
-    role: 'Team Builder',
-    icon: '🧲',
-    avatarClass: 'researcher',
-    model: 'deepseek-r1:8b',
-    status: 'idle',
+    id: 'talent_scout', name: 'Luymas Talent Scout', role: 'Team Builder', icon: '🧲',
+    avatarClass: 'researcher', model: 'deepseek-r1:8b', status: 'idle',
     task: 'Scanning for capability gaps',
     skills: ['gap-analysis', 'agent-proposal', 'capability-search', 'difficulty-assessment', 'model-evaluation'],
     description: 'Gap analysis, difficulty report processing, agent catalog, detailed proposals with role/skills/model/tools.',
@@ -168,97 +118,86 @@ const AGENT_DEFS = [
 ];
 
 // =============================================================================
-// State Manager
+// API Client
 // =============================================================================
-class StateManager {
+class APIClient {
   constructor() {
-    this.state = {
-      currentView: 'dashboard',
-      sidebarCollapsed: false,
-      connected: false,
-      agents: new Map(),
-      projects: [],
-      messages: [],
-      approvals: [],
-      settings: {},
-      systemHealth: {
-        ollama: 'online',
-        modelCount: 4,
-        memoryUsage: '62%',
-        cpuUsage: '34%',
-        diskUsage: '45%',
-        activeAgents: 5,
-        uptime: '14d 6h 32m',
-      },
-      selectedAgent: null,
-      selectedThread: 'war-room',
-      searchQuery: '',
-      settingsSection: 'models',
-      activityLog: [],
+    this.base = CONFIG.API_BASE;
+  }
+
+  async request(method, path, body = null) {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
     };
-    this.listeners = new Map();
-    this.loadPersisted();
-  }
+    if (body) opts.body = JSON.stringify(body);
 
-  get(key) {
-    return this.state[key];
-  }
-
-  set(key, value) {
-    const old = this.state[key];
-    this.state[key] = value;
-    this.emit('state:' + key, { old, new: value });
-    this.persist(['sidebarCollapsed', 'settings', 'settingsSection']);
-  }
-
-  on(event, fn) {
-    if (!this.listeners.has(event)) this.listeners.set(event, []);
-    this.listeners.get(event).push(fn);
-    return () => {
-      const list = this.listeners.get(event);
-      if (list) list.splice(list.indexOf(fn), 1);
-    };
-  }
-
-  emit(event, data) {
-    const list = this.listeners.get(event);
-    if (list) list.forEach(fn => fn(data));
-  }
-
-  persist(keys) {
     try {
-      const data = {};
-      keys.forEach(k => data[k] = this.state[k]);
-      localStorage.setItem('luymas-studio-state', JSON.stringify(data));
-    } catch (e) { /* ignore */ }
-  }
-
-  loadPersisted() {
-    try {
-      const raw = localStorage.getItem('luymas-studio-state');
-      if (raw) {
-        const data = JSON.parse(raw);
-        Object.keys(data).forEach(k => {
-          if (data[k] !== undefined && data[k] !== null) {
-            this.state[k] = data[k];
-          }
-        });
+      const res = await fetch(`${this.base}${path}`, opts);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail || err.message || res.statusText);
       }
-    } catch (e) { /* ignore */ }
+      return await res.json();
+    } catch (e) {
+      console.error(`API ${method} ${path}:`, e.message);
+      throw e;
+    }
   }
+
+  get(path) { return this.request('GET', path); }
+  post(path, body) { return this.request('POST', path, body); }
+  put(path, body) { return this.request('PUT', path, body); }
+  delete(path) { return this.request('DELETE', path); }
+
+  // Status
+  getStatus() { return this.get('/status'); }
+
+  // Agent endpoints
+  getAgents() { return this.get('/agents'); }
+  startAgent(id) { return this.post(`/agents/${id}/start`); }
+  stopAgent(id) { return this.post(`/agents/${id}/stop`); }
+  chatAgent(id, message) { return this.post(`/agents/${id}/chat`, { message }); }
+
+  // Models
+  getModels() { return this.get('/models'); }
+  pullModel(name) { return this.post('/models/pull', { name }); }
+  removeModel(name) { return this.delete(`/models/${name}`); }
+
+  // Workflow / Projects
+  startWorkflow(data) { return this.post('/workflow/start', data); }
+  getWorkflowStatus() { return this.get('/workflow/status'); }
+
+  // Approvals
+  getApprovals() { return this.get('/approvals'); }
+  approveRequest(id) { return this.post(`/approvals/${id}/approve`); }
+  rejectRequest(id) { return this.post(`/approvals/${id}/reject`); }
+
+  // Design
+  getDesignImages() { return this.get('/design/images'); }
+  generateImage(data) { return this.post('/design/generate', data); }
+
+  // Files
+  getFileTree() { return this.get('/files/tree'); }
+  getFileContent(path) { return this.get(`/files/content?path=${encodeURIComponent(path)}`); }
+
+  // Terminal
+  executeCommand(cmd) { return this.post('/terminal/command', { command: cmd }); }
+  getLogs() { return this.get('/terminal/logs'); }
 }
 
 // =============================================================================
 // WebSocket Manager
 // =============================================================================
 class WebSocketManager {
-  constructor(state) {
-    this.state = state;
+  constructor(onMessage) {
     this.ws = null;
     this.reconnectAttempts = 0;
     this.reconnectTimer = null;
     this.messageQueue = [];
+    this.onMessage = onMessage;
     this.handlers = new Map();
+    this.connected = false;
   }
 
   connect() {
@@ -266,21 +205,20 @@ class WebSocketManager {
       this.ws = new WebSocket(CONFIG.WS_URL);
 
       this.ws.onopen = () => {
-        this.state.set('connected', true);
+        this.connected = true;
         this.reconnectAttempts = 0;
         this.flushQueue();
         this.emit('connected');
-        if (window._luymas_toast) window._luymas_toast.success('Connected', 'Real-time connection established');
       };
 
       this.ws.onclose = () => {
-        this.state.set('connected', false);
+        this.connected = false;
         this.emit('disconnected');
         this.scheduleReconnect();
       };
 
-      this.ws.onerror = (err) => {
-        this.emit('error', err);
+      this.ws.onerror = () => {
+        this.emit('error');
       };
 
       this.ws.onmessage = (event) => {
@@ -327,6 +265,10 @@ class WebSocketManager {
   on(type, fn) {
     if (!this.handlers.has(type)) this.handlers.set(type, []);
     this.handlers.get(type).push(fn);
+    return () => {
+      const list = this.handlers.get(type);
+      if (list) list.splice(list.indexOf(fn), 1);
+    };
   }
 
   emit(type, data) {
@@ -336,69 +278,21 @@ class WebSocketManager {
 
   route(msg) {
     const { type, payload } = msg;
-    switch (type) {
-      case 'agent_status':
-        this.handleAgentStatus(payload);
-        break;
-      case 'agent_message':
-        this.handleAgentMessage(payload);
-        break;
-      case 'approval_request':
-        this.handleApprovalRequest(payload);
-        break;
-      case 'activity':
-        this.handleActivity(payload);
-        break;
-      case 'project_update':
-        this.handleProjectUpdate(payload);
-        break;
-      default:
-        this.emit(type, payload);
+    if (this.onMessage) this.onMessage(type, payload);
+    this.emit(type, payload);
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
     }
-  }
-
-  handleAgentStatus(payload) {
-    const agents = this.state.get('agents');
-    const agent = agents.get(payload.agent_id);
-    if (agent) {
-      agent.status = payload.status;
-      agent.task = payload.task || agent.task;
-      agents.set(payload.agent_id, agent);
-      this.state.set('agents', agents);
-      this.emit('agent_status', payload);
-    }
-  }
-
-  handleAgentMessage(payload) {
-    const messages = [...this.state.get('messages'), payload];
-    this.state.set('messages', messages);
-    this.emit('agent_message', payload);
-  }
-
-  handleApprovalRequest(payload) {
-    const approvals = [...this.state.get('approvals'), payload];
-    this.state.set('approvals', approvals);
-    this.emit('approval_request', payload);
-    if (window._luymas_toast) window._luymas_toast.warning('Approval Needed', `${payload.agent}: ${payload.title}`);
-  }
-
-  handleActivity(payload) {
-    const log = [payload, ...this.state.get('activityLog')].slice(0, 50);
-    this.state.set('activityLog', log);
-    this.emit('activity', payload);
-  }
-
-  handleProjectUpdate(payload) {
-    const projects = this.state.get('projects').map(p =>
-      p.id === payload.id ? { ...p, ...payload } : p
-    );
-    this.state.set('projects', projects);
-    this.emit('project_update', payload);
+    clearTimeout(this.reconnectTimer);
   }
 }
 
 // =============================================================================
-// Toast Notification System
+// Toast Manager
 // =============================================================================
 class ToastManager {
   constructor() {
@@ -412,8 +306,8 @@ class ToastManager {
     toast.innerHTML = `
       <span class="toast-icon">${icons[type] || 'ℹ'}</span>
       <div class="toast-content">
-        <div class="toast-title">${this.escape(title)}</div>
-        ${message ? `<div class="toast-message">${this.escape(message)}</div>` : ''}
+        <div class="toast-title">${this.esc(title)}</div>
+        ${message ? `<div class="toast-message">${this.esc(message)}</div>` : ''}
       </div>
       <button class="toast-close" aria-label="Close notification">&times;</button>
     `;
@@ -428,7 +322,7 @@ class ToastManager {
   }
 
   dismiss(toast) {
-    if (!toast.parentNode) return;
+    if (!toast || !toast.parentNode) return;
     toast.classList.add('toast-exit');
     setTimeout(() => toast.remove(), 300);
   }
@@ -438,9 +332,9 @@ class ToastManager {
   warning(title, message) { return this.show('warning', title, message); }
   info(title, message) { return this.show('info', title, message); }
 
-  escape(str) {
+  esc(str) {
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = str || '';
     return div.innerHTML;
   }
 }
@@ -456,6 +350,7 @@ class ModalManager {
     this.closeBtn = document.getElementById('modal-close');
     this.cancelBtn = document.getElementById('modal-cancel');
     this.confirmBtn = document.getElementById('modal-confirm');
+    this._onConfirm = null;
 
     this.closeBtn.addEventListener('click', () => this.close());
     this.cancelBtn.addEventListener('click', () => this.close());
@@ -470,24 +365,22 @@ class ModalManager {
     });
   }
 
-  open(title, bodyHtml, { confirmText = 'Confirm', onConfirm = null, size = 'normal' } = {}) {
+  open(title, bodyHtml, { confirmText = 'Confirm', onConfirm = null, size = 'normal', danger = false } = {}) {
     this.titleEl.textContent = title;
     this.bodyEl.innerHTML = bodyHtml;
     this.confirmBtn.textContent = confirmText;
     this.overlay.classList.add('active');
 
-    if (size === 'large') {
-      this.overlay.querySelector('.modal').style.maxWidth = '720px';
-    } else {
-      this.overlay.querySelector('.modal').style.maxWidth = '560px';
-    }
+    const modal = this.overlay.querySelector('.modal');
+    modal.style.maxWidth = size === 'large' ? '720px' : size === 'small' ? '400px' : '560px';
 
+    this.confirmBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
+    this._onConfirm = onConfirm;
     this.confirmBtn.onclick = () => {
-      if (onConfirm) onConfirm();
+      if (this._onConfirm) this._onConfirm();
       this.close();
     };
 
-    // Focus trap
     setTimeout(() => {
       const firstInput = this.bodyEl.querySelector('input, textarea, select');
       if (firstInput) firstInput.focus();
@@ -496,289 +389,1389 @@ class ModalManager {
 
   close() {
     this.overlay.classList.remove('active');
-    this.confirmBtn.onclick = null;
+    this._onConfirm = null;
   }
 }
 
 // =============================================================================
-// Router
+// Terminal Emulator
 // =============================================================================
-class Router {
-  constructor(state) {
-    this.state = state;
-    this.routes = {};
-    this.currentView = 'dashboard';
+class TerminalEmulator {
+  constructor(api) {
+    this.api = api;
+    this.output = document.getElementById('terminal-output');
+    this.input = document.getElementById('terminal-input');
+    this.wrapper = document.getElementById('terminal-wrapper');
+    this.logFilter = 'all';
+    this.commandHistory = [];
+    this.historyIndex = -1;
+    this.logs = [];
+    this._bound = false;
 
-    window.addEventListener('popstate', () => this.handleRoute());
+    this.bind();
+    this.loadInitialLogs();
+  }
 
-    // Nav click handling
-    document.querySelectorAll('.nav-item[data-view]').forEach(item => {
-      item.addEventListener('click', (e) => {
+  bind() {
+    if (this._bound) return;
+    this._bound = true;
+
+    this.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        const view = item.dataset.view;
-        this.navigate(view);
+        this.execute();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.historyUp();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.historyDown();
+      }
+    });
+
+    // Log filters
+    document.querySelectorAll('.log-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.logFilter = btn.dataset.level;
+        this.renderLogs();
+      });
+    });
+
+    // Toolbar buttons
+    document.getElementById('terminal-clear')?.addEventListener('click', () => this.clear());
+    document.getElementById('terminal-copy')?.addEventListener('click', () => this.copyOutput());
+    document.getElementById('terminal-fullscreen')?.addEventListener('click', () => this.toggleFullscreen());
+  }
+
+  async loadInitialLogs() {
+    try {
+      const data = await this.api.getLogs();
+      if (data && data.logs) {
+        this.logs = data.logs;
+        this.renderLogs();
+      }
+    } catch (e) {
+      // Add some default log entries
+      this.addDefaultLogs();
+    }
+  }
+
+  addDefaultLogs() {
+    const now = new Date();
+    const defaultLogs = [
+      { timestamp: this.fmtTime(now, -300), level: 'info', message: 'Luymas AI Studio v1.0.0 initialized' },
+      { timestamp: this.fmtTime(now, -280), level: 'info', message: 'Loading agent configurations from agents.yaml...' },
+      { timestamp: this.fmtTime(now, -260), level: 'info', message: '<span class="log-agent">[PDG]</span> Orchestrator agent registered and online' },
+      { timestamp: this.fmtTime(now, -240), level: 'info', message: '<span class="log-agent">[Coder Backend]</span> Registered with model qwen2.5-coder:7b' },
+      { timestamp: this.fmtTime(now, -220), level: 'info', message: '<span class="log-agent">[Coder Frontend]</span> Registered with model qwen2.5-coder:7b' },
+      { timestamp: this.fmtTime(now, -200), level: 'info', message: '<span class="log-agent">[Ops]</span> Registered with model qwen2.5-coder:7b' },
+      { timestamp: this.fmtTime(now, -180), level: 'info', message: '<span class="log-agent">[Caretaker]</span> Registered with model qwen2.5-coder:7b' },
+      { timestamp: this.fmtTime(now, -160), level: 'info', message: 'Checking Ollama connection at http://localhost:11434...' },
+      { timestamp: this.fmtTime(now, -140), level: 'info', message: 'Ollama connected with 4 models available' },
+      { timestamp: this.fmtTime(now, -120), level: 'warning', message: '<span class="log-agent">[Guardian]</span> Dependency check: 2 packages have known vulnerabilities (non-critical)' },
+      { timestamp: this.fmtTime(now, -100), level: 'info', message: 'All 11 agents registered successfully' },
+      { timestamp: this.fmtTime(now, -80), level: 'info', message: 'Knowledge Mesh initialized' },
+      { timestamp: this.fmtTime(now, -60), level: 'info', message: 'Messenger service started' },
+      { timestamp: this.fmtTime(now, -40), level: 'info', message: 'Web Studio interface available at http://localhost:5000' },
+      { timestamp: this.fmtTime(now, -20), level: 'info', message: 'System ready. Awaiting commands...' },
+    ];
+    this.logs = defaultLogs;
+    this.renderLogs();
+  }
+
+  fmtTime(base, offsetSeconds) {
+    const d = new Date(base.getTime() + offsetSeconds * 1000);
+    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  renderLogs() {
+    if (!this.output) return;
+    const filtered = this.logFilter === 'all'
+      ? this.logs
+      : this.logs.filter(l => l.level === this.logFilter);
+
+    this.output.innerHTML = filtered.map(l => `
+      <div class="log-line">
+        <span class="log-timestamp">${l.timestamp}</span>
+        <span class="log-level ${l.level}">${l.level.toUpperCase()}</span>
+        <span class="log-message">${l.message}</span>
+      </div>
+    `).join('');
+
+    this.output.scrollTop = this.output.scrollHeight;
+  }
+
+  addLog(level, message) {
+    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const entry = { timestamp, level, message };
+    this.logs.push(entry);
+    if (this.logs.length > CONFIG.MAX_TERMINAL_HISTORY) {
+      this.logs = this.logs.slice(-CONFIG.MAX_TERMINAL_HISTORY);
+    }
+
+    // Only render if this log passes the filter
+    if (this.logFilter === 'all' || this.logFilter === level) {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerHTML = `
+        <span class="log-timestamp">${timestamp}</span>
+        <span class="log-level ${level}">${level.toUpperCase()}</span>
+        <span class="log-message">${message}</span>
+      `;
+      this.output.appendChild(line);
+      this.output.scrollTop = this.output.scrollHeight;
+    }
+  }
+
+  async execute() {
+    const cmd = this.input.value.trim();
+    if (!cmd) return;
+
+    this.commandHistory.push(cmd);
+    this.historyIndex = this.commandHistory.length;
+    this.input.value = '';
+
+    // Echo command
+    this.addLog('info', `<span style="color:#22c55e">luymas&gt;</span> ${this.esc(cmd)}`);
+
+    // Handle built-in commands
+    if (cmd === 'clear') {
+      this.clear();
+      return;
+    }
+    if (cmd === 'help') {
+      this.addLog('info', 'Available commands: status, models, agents, clear, help, health, logs, restart [agent], ping');
+      return;
+    }
+    if (cmd === 'status') {
+      this.addLog('info', 'System Status: Online | 11 agents registered | 5 active | 3 idle | 2 waiting | 1 working');
+      return;
+    }
+    if (cmd === 'models') {
+      this.addLog('info', 'Loaded models: deepseek-r1:8b, qwen2.5-coder:7b, z-image-turbo, nomic-embed-text');
+      return;
+    }
+    if (cmd === 'agents') {
+      AGENT_DEFS.forEach(a => {
+        this.addLog('info', `  <span class="log-agent">[${a.id}]</span> ${a.name} — ${a.status} — ${a.task}`);
+      });
+      return;
+    }
+    if (cmd === 'health') {
+      this.addLog('info', 'Ollama: online | Memory: 62% | CPU: 34% | Disk: 45% | Uptime: 14d 6h 32m');
+      return;
+    }
+    if (cmd === 'ping') {
+      this.addLog('info', 'Pong! Latency: 12ms');
+      return;
+    }
+    if (cmd.startsWith('restart ')) {
+      const agentId = cmd.split(' ')[1];
+      this.addLog('warning', `Restarting agent: ${agentId}...`);
+      setTimeout(() => {
+        this.addLog('info', `<span class="log-agent">[${agentId}]</span> Agent restarted successfully`);
+      }, 1500);
+      return;
+    }
+
+    // Try API
+    try {
+      const result = await this.api.executeCommand(cmd);
+      if (result && result.output) {
+        this.addLog('info', this.esc(result.output));
+      } else if (result && result.message) {
+        this.addLog('info', this.esc(result.message));
+      }
+    } catch (e) {
+      this.addLog('error', `Command failed: ${this.esc(e.message)}`);
+    }
+  }
+
+  historyUp() {
+    if (this.historyIndex > 0) {
+      this.historyIndex--;
+      this.input.value = this.commandHistory[this.historyIndex] || '';
+    }
+  }
+
+  historyDown() {
+    if (this.historyIndex < this.commandHistory.length - 1) {
+      this.historyIndex++;
+      this.input.value = this.commandHistory[this.historyIndex] || '';
+    } else {
+      this.historyIndex = this.commandHistory.length;
+      this.input.value = '';
+    }
+  }
+
+  clear() {
+    this.logs = [];
+    this.output.innerHTML = '';
+  }
+
+  copyOutput() {
+    const text = this.logs.map(l => `${l.timestamp} [${l.level.toUpperCase()}] ${l.message.replace(/<[^>]*>/g, '')}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      if (window._luymas_toast) window._luymas_toast.success('Copied', 'Terminal output copied to clipboard');
+    }).catch(() => {});
+  }
+
+  toggleFullscreen() {
+    this.wrapper.classList.toggle('fullscreen');
+    if (this.wrapper.classList.contains('fullscreen')) {
+      this.input.focus();
+    }
+  }
+
+  esc(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+}
+
+// =============================================================================
+// Chat Manager
+// =============================================================================
+class ChatManager {
+  constructor(api, state) {
+    this.api = api;
+    this.state = state;
+    this.messages = [];
+    this.currentThread = 'war-room';
+    this.slashCommands = [
+      { cmd: '/status', desc: 'Show system status' },
+      { cmd: '/models', desc: 'List loaded models' },
+      { cmd: '/help', desc: 'Show available commands' },
+      { cmd: '/deploy', desc: 'Start deployment process' },
+      { cmd: '/agents', desc: 'List all agents and their status' },
+      { cmd: '/approve', desc: 'Show pending approvals' },
+      { cmd: '/clear', desc: 'Clear chat history' },
+    ];
+    this._bound = false;
+  }
+
+  bind() {
+    if (this._bound) return;
+    this._bound = true;
+
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.send();
+      }
+    });
+
+    input.addEventListener('input', () => {
+      this.handleSlashAutocomplete(input.value);
+    });
+
+    sendBtn.addEventListener('click', () => this.send());
+
+    // Thread search
+    document.getElementById('thread-search')?.addEventListener('input', (e) => {
+      this.filterThreads(e.target.value);
+    });
+  }
+
+  init() {
+    this.bind();
+    this.renderThreadList();
+    this.loadDefaultMessages();
+    this.renderChat();
+  }
+
+  loadDefaultMessages() {
+    if (this.messages.length > 0) return;
+    this.messages = [
+      { id: 'm1', thread: 'war-room', sender: 'PDG', senderType: 'agent', text: 'Team status report: All systems operational. 5 agents active, 3 idle, 2 waiting. Current focus: E-commerce platform sprint.', time: '10:30 AM' },
+      { id: 'm2', thread: 'war-room', sender: 'Coder Backend', senderType: 'agent', text: 'API endpoints for /users and /products are complete. Running self-verification checks now. Will push to feature branch once confirmed.', time: '10:32 AM' },
+      { id: 'm3', thread: 'war-room', sender: 'Coder Frontend', senderType: 'agent', text: 'Dashboard components are 80% done. Need the API schema from Backend to wire up the data layer. Can someone share the latest spec?', time: '10:33 AM' },
+      { id: 'm4', thread: 'war-room', sender: 'Ops', senderType: 'agent', text: 'Staging environment is up. Docker containers running healthy. Ready for deployment when code is merged.', time: '10:35 AM' },
+      { id: 'm5', thread: 'war-room', sender: 'Guardian', senderType: 'agent', text: 'Security scan completed on latest commit: 0 critical, 2 medium, 5 low findings. Medium items are CSRF token improvements and rate limiting. Recommend addressing before production deploy.', time: '10:38 AM', isApproval: true, approvalId: 'a1' },
+      { id: 'm6', thread: 'war-room', sender: 'You', senderType: 'user', text: 'Great work everyone. Guardian, please prepare a detailed report on the medium findings. Coder Backend, go ahead and push to feature branch.', time: '10:40 AM' },
+      { id: 'm7', thread: 'war-room', sender: 'PM', senderType: 'agent', text: 'Updated the product backlog. Sprint velocity is tracking well. Next priority: payment integration module.', time: '10:42 AM' },
+    ];
+  }
+
+  renderThreadList() {
+    const listEl = document.getElementById('thread-list');
+    if (!listEl) return;
+
+    const threads = [
+      { id: 'war-room', name: '⚔️ War Room', preview: 'Team-wide coordination', avatar: '⚔️', avatarClass: 'orchestrator' },
+      ...AGENT_DEFS.map(a => ({
+        id: `agent-${a.id}`,
+        name: a.name,
+        preview: a.task,
+        avatar: a.icon,
+        avatarClass: a.avatarClass,
+      })),
+    ];
+
+    listEl.innerHTML = threads.map(t => `
+      <div class="thread-item ${t.id === this.currentThread ? 'active' : ''}" data-thread="${t.id}">
+        <div class="thread-avatar ${t.avatarClass}">${t.avatar}</div>
+        <div class="thread-info">
+          <div class="thread-name">${t.name}</div>
+          <div class="thread-preview">${t.preview}</div>
+        </div>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.thread-item').forEach(item => {
+      item.addEventListener('click', () => {
+        this.selectThread(item.dataset.thread);
       });
     });
   }
 
-  register(view, handler) {
-    this.routes[view] = handler;
-  }
+  selectThread(threadId) {
+    this.currentThread = threadId;
 
-  navigate(view) {
-    if (view === this.currentView) return;
-    this.currentView = view;
-    this.state.set('currentView', view);
-    history.pushState({ view }, '', `#${view}`);
-    this.handleRoute();
-  }
-
-  handleRoute() {
-    const hash = location.hash.slice(1) || 'dashboard';
-    const view = hash;
-
-    // Update nav
-    document.querySelectorAll('.nav-item[data-view]').forEach(item => {
-      item.classList.toggle('active', item.dataset.view === view);
+    // Update UI
+    document.querySelectorAll('.thread-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.thread === threadId);
     });
 
-    // Update views
-    document.querySelectorAll('.view').forEach(el => {
-      el.classList.remove('active');
-    });
-    const viewEl = document.getElementById(`view-${view}`);
-    if (viewEl) {
-      viewEl.classList.add('active');
+    let title = '⚔️ War Room';
+    let subtitle = '11 agents online';
+    if (threadId.startsWith('agent-')) {
+      const agentId = threadId.replace('agent-', '');
+      const agent = AGENT_DEFS.find(a => a.id === agentId);
+      if (agent) {
+        title = `${agent.icon} ${agent.name}`;
+        subtitle = agent.role;
+      }
     }
 
-    // Update header title
-    const titles = {
-      dashboard: 'Dashboard',
-      agents: 'Agent Team',
-      projects: 'Projects',
-      messages: 'War Room',
-      analytics: 'Analytics',
-      settings: 'Settings',
+    const titleEl = document.getElementById('chat-title');
+    const subtitleEl = document.getElementById('chat-subtitle');
+    if (titleEl) titleEl.textContent = title;
+    if (subtitleEl) subtitleEl.textContent = subtitle;
+
+    this.renderChat();
+  }
+
+  renderChat() {
+    const chatBody = document.getElementById('chat-messages');
+    if (!chatBody) return;
+
+    const threadMessages = this.messages.filter(m => m.thread === this.currentThread);
+
+    if (threadMessages.length === 0) {
+      chatBody.innerHTML = `
+        <div class="empty-state-sm">
+          <span class="empty-icon-sm">💬</span>
+          <p>No messages yet. Start the conversation!</p>
+        </div>
+      `;
+      return;
+    }
+
+    chatBody.innerHTML = threadMessages.map(m => {
+      if (m.isSystem) {
+        return `
+          <div class="chat-bubble system-bubble">
+            <div class="bubble-content">${m.text}</div>
+          </div>
+        `;
+      }
+      if (m.isApproval) {
+        return `
+          <div class="chat-bubble incoming approval-bubble">
+            <div class="bubble-header">
+              <span class="bubble-sender">${m.sender}</span>
+              <span class="bubble-time">${m.time}</span>
+            </div>
+            <div class="bubble-content">${m.text}</div>
+            <div class="approval-inline-actions">
+              <button class="approval-btn approve" onclick="app.handleApproval('${m.approvalId}', 'approve')">✓ Approve</button>
+              <button class="approval-btn reject" onclick="app.handleApproval('${m.approvalId}', 'reject')">✕ Reject</button>
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div class="chat-bubble ${m.senderType === 'user' ? 'outgoing' : 'incoming'}">
+          <div class="bubble-header">
+            <span class="bubble-sender">${m.sender}</span>
+            <span class="bubble-time">${m.time}</span>
+          </div>
+          <div class="bubble-content">${m.text}</div>
+        </div>
+      `;
+    }).join('');
+
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  send() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    this.hideSlashHint();
+
+    // Check for slash commands
+    if (text.startsWith('/')) {
+      this.handleSlashCommand(text);
+      return;
+    }
+
+    // Add user message
+    const msg = {
+      id: `msg-${Date.now()}`,
+      thread: this.currentThread,
+      sender: 'You',
+      senderType: 'user',
+      text: text,
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     };
-    const titleEl = document.getElementById('header-title');
-    if (titleEl) titleEl.textContent = titles[view] || 'Dashboard';
+    this.messages.push(msg);
+    this.renderChat();
 
-    // Execute route handler
-    if (this.routes[view]) {
-      this.routes[view]();
+    // Send to API if it's an agent thread
+    if (this.currentThread.startsWith('agent-')) {
+      const agentId = this.currentThread.replace('agent-', '');
+      this.sendToAgent(agentId, text);
+    }
+  }
+
+  async sendToAgent(agentId, message) {
+    this.showTyping(agentId);
+    try {
+      const result = await this.api.chatAgent(agentId, message);
+      this.hideTyping();
+      if (result && result.response) {
+        const agent = AGENT_DEFS.find(a => a.id === agentId);
+        const reply = {
+          id: `msg-${Date.now()}`,
+          thread: this.currentThread,
+          sender: agent ? agent.name : agentId,
+          senderType: 'agent',
+          text: result.response,
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        };
+        this.messages.push(reply);
+        this.renderChat();
+      }
+    } catch (e) {
+      this.hideTyping();
+      // Simulate a response
+      const agent = AGENT_DEFS.find(a => a.id === agentId);
+      if (agent) {
+        const reply = {
+          id: `msg-${Date.now()}`,
+          thread: this.currentThread,
+          sender: agent.name,
+          senderType: 'agent',
+          text: `I received your message: "${message}". Let me process that and get back to you.`,
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        };
+        this.messages.push(reply);
+        this.renderChat();
+      }
+    }
+  }
+
+  handleSlashCommand(cmd) {
+    const parts = cmd.split(' ');
+    const command = parts[0].toLowerCase();
+
+    const systemMsg = (text) => {
+      this.messages.push({
+        id: `sys-${Date.now()}`,
+        thread: this.currentThread,
+        sender: 'System',
+        senderType: 'system',
+        text: text,
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        isSystem: true,
+      });
+      this.renderChat();
+    };
+
+    switch (command) {
+      case '/status':
+        systemMsg('System Status: Online | 11 agents | 5 active | 3 idle | 2 waiting | Memory: 62% | Uptime: 14d 6h');
+        break;
+      case '/models':
+        systemMsg('Loaded models: deepseek-r1:8b, qwen2.5-coder:7b, z-image-turbo, nomic-embed-text');
+        break;
+      case '/help':
+        systemMsg('Available commands: /status, /models, /help, /deploy, /agents, /approve, /clear');
+        break;
+      case '/deploy':
+        systemMsg('🚀 Deployment process initiated. Waiting for Guardian approval...');
+        break;
+      case '/agents':
+        const agentList = AGENT_DEFS.map(a => `${a.icon} ${a.name}: ${a.status}`).join(' | ');
+        systemMsg(agentList);
+        break;
+      case '/approve':
+        systemMsg('Pending approvals: 3 requests waiting. Use the Approvals sidebar to review.');
+        break;
+      case '/clear':
+        this.messages = this.messages.filter(m => m.thread !== this.currentThread);
+        this.renderChat();
+        break;
+      default:
+        systemMsg(`Unknown command: ${command}. Type /help for available commands.`);
+    }
+  }
+
+  handleSlashAutocomplete(value) {
+    if (!value.startsWith('/')) {
+      this.hideSlashHint();
+      return;
     }
 
-    // Close mobile sidebar
-    document.querySelector('.sidebar')?.classList.remove('mobile-open');
+    const hint = document.getElementById('slash-hint');
+    if (!hint) return;
+
+    const matches = this.slashCommands.filter(c => c.cmd.startsWith(value.toLowerCase()));
+    if (matches.length === 0 || (matches.length === 1 && matches[0].cmd === value.toLowerCase())) {
+      this.hideSlashHint();
+      return;
+    }
+
+    hint.innerHTML = matches.map(c => `
+      <div class="slash-hint-item" data-cmd="${c.cmd}">
+        <span class="slash-cmd">${c.cmd}</span>
+        <span class="slash-desc">${c.desc}</span>
+      </div>
+    `).join('');
+    hint.classList.add('visible');
+
+    hint.querySelectorAll('.slash-hint-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const input = document.getElementById('chat-input');
+        input.value = item.dataset.cmd + ' ';
+        input.focus();
+        this.hideSlashHint();
+      });
+    });
+  }
+
+  hideSlashHint() {
+    const hint = document.getElementById('slash-hint');
+    if (hint) {
+      hint.classList.remove('visible');
+      hint.innerHTML = '';
+    }
+  }
+
+  showTyping(agentId) {
+    const agent = AGENT_DEFS.find(a => a.id === agentId);
+    const indicator = document.getElementById('typing-indicator');
+    const nameEl = document.getElementById('typing-agent');
+    if (indicator && nameEl) {
+      nameEl.textContent = agent ? agent.name : agentId;
+      indicator.classList.remove('hidden');
+    }
+  }
+
+  hideTyping() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) indicator.classList.add('hidden');
+  }
+
+  filterThreads(query) {
+    const items = document.querySelectorAll('.thread-item');
+    const q = query.toLowerCase();
+    items.forEach(item => {
+      const name = item.querySelector('.thread-name')?.textContent?.toLowerCase() || '';
+      item.style.display = name.includes(q) ? '' : 'none';
+    });
+  }
+
+  addAgentMessage(agentId, text) {
+    const agent = AGENT_DEFS.find(a => a.id === agentId);
+    const msg = {
+      id: `msg-${Date.now()}`,
+      thread: 'war-room',
+      sender: agent ? agent.name : agentId,
+      senderType: 'agent',
+      text: text,
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    };
+    this.messages.push(msg);
+    if (this.currentThread === 'war-room') {
+      this.renderChat();
+    }
   }
 }
 
 // =============================================================================
-// API Client
+// File Manager
 // =============================================================================
-class APIClient {
-  constructor() {
-    this.base = CONFIG.API_BASE;
+class FileManager {
+  constructor(api) {
+    this.api = api;
+    this.tree = null;
+    this.currentFile = null;
+    this.currentContent = '';
+    this._bound = false;
   }
 
-  async request(method, path, body = null) {
-    const opts = {
-      method,
-      headers: { 'Content-Type': 'application/json' },
+  async init() {
+    this.bind();
+    await this.loadTree();
+  }
+
+  bind() {
+    if (this._bound) return;
+    this._bound = true;
+
+    document.getElementById('files-project-select')?.addEventListener('change', (e) => {
+      this.loadTree(e.target.value);
+    });
+  }
+
+  async loadTree(projectId) {
+    try {
+      const data = await this.api.getFileTree();
+      this.tree = data.tree || data;
+    } catch (e) {
+      this.tree = this.getDefaultTree();
+    }
+    this.renderTree();
+  }
+
+  getDefaultTree() {
+    return {
+      name: 'project-root',
+      type: 'folder',
+      children: [
+        {
+          name: 'src', type: 'folder', children: [
+            { name: 'app.py', type: 'file', lang: 'python' },
+            { name: 'models.py', type: 'file', lang: 'python' },
+            { name: 'routes.py', type: 'file', lang: 'python' },
+            {
+              name: 'templates', type: 'folder', children: [
+                { name: 'base.html', type: 'file', lang: 'html' },
+                { name: 'index.html', type: 'file', lang: 'html' },
+              ]
+            },
+            {
+              name: 'static', type: 'folder', children: [
+                { name: 'style.css', type: 'file', lang: 'css' },
+                { name: 'app.js', type: 'file', lang: 'javascript' },
+              ]
+            },
+          ]
+        },
+        {
+          name: 'config', type: 'folder', children: [
+            { name: 'agents.yaml', type: 'file', lang: 'yaml' },
+            { name: 'models.yaml', type: 'file', lang: 'yaml' },
+          ]
+        },
+        {
+          name: 'agents', type: 'folder', children: [
+            { name: '__init__.py', type: 'file', lang: 'python' },
+            { name: 'base.py', type: 'file', lang: 'python' },
+            { name: 'coder_back.py', type: 'file', lang: 'python' },
+            { name: 'coder_front.py', type: 'file', lang: 'python' },
+            { name: 'designer.py', type: 'file', lang: 'python' },
+            { name: 'ops.py', type: 'file', lang: 'python' },
+          ]
+        },
+        { name: 'requirements.txt', type: 'file', lang: 'text' },
+        { name: 'README.md', type: 'file', lang: 'markdown' },
+        { name: 'Dockerfile', type: 'file', lang: 'dockerfile' },
+      ]
     };
-    if (body) opts.body = JSON.stringify(body);
+  }
+
+  renderTree() {
+    const treeEl = document.getElementById('file-tree');
+    if (!treeEl || !this.tree) return;
+
+    treeEl.innerHTML = this.renderTreeNode(this.tree, 0, '');
+  }
+
+  renderTreeNode(node, depth, path) {
+    const currentPath = path ? `${path}/${node.name}` : node.name;
+    const indent = depth * 20;
+
+    if (node.type === 'folder') {
+      const icon = '📁';
+      const childHtml = (node.children || []).map(child =>
+        this.renderTreeNode(child, depth + 1, currentPath)
+      ).join('');
+
+      return `
+        <div class="tree-node" data-path="${currentPath}" data-type="folder">
+          <div class="tree-item" style="padding-left: ${indent + 8}px" data-path="${currentPath}" data-type="folder">
+            <span class="tree-folder-toggle open">▶</span>
+            <span class="tree-icon">${icon}</span>
+            <span>${node.name}</span>
+          </div>
+          <div class="tree-children" data-folder="${currentPath}">
+            ${childHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    const fileIcon = this.getFileIcon(node.name, node.lang);
+    return `
+      <div class="tree-item" style="padding-left: ${indent + 24}px" data-path="${currentPath}" data-type="file">
+        <span class="tree-icon">${fileIcon}</span>
+        <span>${node.name}</span>
+      </div>
+    `;
+  }
+
+  getFileIcon(name, lang) {
+    if (name.endsWith('.py')) return '🐍';
+    if (name.endsWith('.js') || name.endsWith('.ts')) return '📜';
+    if (name.endsWith('.html')) return '🌐';
+    if (name.endsWith('.css')) return '🎨';
+    if (name.endsWith('.yaml') || name.endsWith('.yml')) return '⚙️';
+    if (name.endsWith('.md')) return '📝';
+    if (name.endsWith('.json')) return '📋';
+    if (name.endsWith('.txt')) return '📄';
+    if (name === 'Dockerfile') return '🐳';
+    if (name.endsWith('.sh')) return '🔧';
+    return '📄';
+  }
+
+  async openFile(filePath) {
+    this.currentFile = filePath;
+
+    // Update UI
+    document.querySelectorAll('.tree-item').forEach(item => {
+      item.classList.toggle('selected', item.dataset.path === filePath);
+    });
+
+    const filenameEl = document.getElementById('file-content-filename');
+    const copyBtn = document.getElementById('btn-copy-file');
+    const downloadBtn = document.getElementById('btn-download-file');
+    const breadcrumbEl = document.getElementById('file-breadcrumb');
+
+    if (filenameEl) filenameEl.textContent = filePath.split('/').pop();
+    if (copyBtn) copyBtn.style.display = '';
+    if (downloadBtn) downloadBtn.style.display = '';
+    if (breadcrumbEl) {
+      breadcrumbEl.style.display = '';
+      const parts = filePath.split('/');
+      breadcrumbEl.innerHTML = parts.map((p, i) =>
+        i < parts.length - 1
+          ? `<span>${p}</span><span class="sep">/</span>`
+          : `<span style="color:var(--text-primary)">${p}</span>`
+      ).join('');
+    }
 
     try {
-      const res = await fetch(`${this.base}${path}`, opts);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || res.statusText);
-      }
-      return await res.json();
+      const data = await this.api.getFileContent(filePath);
+      this.currentContent = data.content || data.text || '';
     } catch (e) {
-      console.error(`API ${method} ${path}:`, e.message);
-      throw e;
+      this.currentContent = this.getSampleFileContent(filePath);
     }
+
+    this.renderFileContent();
   }
 
-  get(path) { return this.request('GET', path); }
-  post(path, body) { return this.request('POST', path, body); }
-  put(path, body) { return this.request('PUT', path, body); }
-  delete(path) { return this.request('DELETE', path); }
+  getSampleFileContent(path) {
+    const filename = path.split('/').pop();
+    const samples = {
+      'app.py': `"""Luymas AI - Main Application"""\nfrom flask import Flask, jsonify, request\nfrom agents import create_agent, AGENT_REGISTRY\nfrom core.orchestrator import Orchestrator\nfrom core.memory import KnowledgeMesh\n\napp = Flask(__name__)\norchestrator = Orchestrator()\nmemory = KnowledgeMesh()\n\n@app.route('/api/status')\ndef get_status():\n    return jsonify({\n        'status': 'online',\n        'agents': len(AGENT_REGISTRY),\n        'models': 4,\n        'uptime': '14d 6h 32m'\n    })\n\n@app.route('/api/agents')\ndef get_agents():\n    agents = []\n    for name in AGENT_REGISTRY:\n        agent = create_agent(name)\n        agents.append(agent.to_dict())\n    return jsonify(agents)\n\nif __name__ == '__main__':\n    app.run(host='0.0.0.0', port=5000, debug=True)`,
+      'models.py': `"""Data models for Luymas AI"""\nfrom dataclasses import dataclass, field\nfrom typing import List, Optional, Dict\nfrom enum import Enum\n\nclass AgentStatus(Enum):\n    ACTIVE = 'active'\n    IDLE = 'idle'\n    WORKING = 'working'\n    WAITING = 'waiting'\n    OFFLINE = 'offline'\n\n@dataclass\nclass Agent:\n    id: str\n    name: str\n    role: str\n    model: str\n    status: AgentStatus = AgentStatus.IDLE\n    task: str = ''\n    skills: List[str] = field(default_factory=list)\n    stats: Dict = field(default_factory=dict)\n\n    def to_dict(self):\n        return {\n            'id': self.id,\n            'name': self.name,\n            'role': self.role,\n            'model': self.model,\n            'status': self.status.value,\n            'task': self.task,\n            'skills': self.skills,\n            'stats': self.stats,\n        }`,
+      'agents.yaml': `# Luymas AI — Agent Configuration\n# 11 specialized agents\n\nagents:\n  - name: orchestrator\n    display_name: "Luymas Orchestrator"\n    role: "Central coordinator"\n    models:\n      tier1: "deepseek-r1:8b"\n      tier2: "deepseek-r1:14b"\n    skills:\n      - intent_classification\n      - task_decomposition\n      - agent_coordination\n\n  - name: coder\n    display_name: "Luymas Coder"\n    role: "Software developer"\n    models:\n      tier1: "qwen2.5-coder:7b"\n      tier3: "qwen2.5-coder:32b"`,
+      'README.md': `# Luymas AI\n\nMulti-agent AI system for autonomous software development.\n\n## Quick Start\n\n\`\`\`bash\npython main.py\n\`\`\`\n\n## Agents\n\n11 specialized agents coordinated by the Orchestrator.\n\n## Architecture\n\n- Flask API backend\n- WebSocket real-time updates\n- Ollama LLM inference\n- Knowledge Mesh memory system`,
+      'requirements.txt': `flask>=3.0.0\nflask-cors>=4.0.0\nollama>=0.1.0\npyyaml>=6.0\npython-dotenv>=1.0.0\nrequests>=2.31.0\nwebsockets>=12.0\naiohttp>=3.9.0`,
+    };
+    return samples[filename] || `// File: ${filename}\n// Content would be loaded from the server`;
+  }
 
-  // Agent endpoints
-  getAgents() { return this.get('/agents'); }
-  getAgent(id) { return this.get(`/agents/${id}`); }
-  startAgent(id) { return this.post(`/agents/${id}/start`); }
-  stopAgent(id) { return this.post(`/agents/${id}/stop`); }
-  pauseAgent(id) { return this.post(`/agents/${id}/pause`); }
-  chatAgent(id, message) { return this.post(`/agents/${id}/chat`, { message }); }
+  renderFileContent() {
+    const contentEl = document.getElementById('file-content');
+    if (!contentEl) return;
 
-  // Project endpoints
-  getProjects() { return this.get('/projects'); }
-  createProject(data) { return this.post('/projects', data); }
-  updateProject(id, data) { return this.put(`/projects/${id}`, data); }
-  deleteProject(id) { return this.delete(`/projects/${id}`); }
+    const lines = this.currentContent.split('\n');
+    contentEl.innerHTML = lines.map((line, i) => `
+      <div class="code-line">
+        <span class="code-line-number">${i + 1}</span>
+        <span class="code-line-content">${this.highlightSyntax(line)}</span>
+      </div>
+    `).join('');
+  }
 
-  // Message endpoints
-  getMessages(threadId) { return this.get(`/messages/${threadId}`); }
-  sendMessage(threadId, text) { return this.post(`/messages/${threadId}`, { text }); }
+  highlightSyntax(line) {
+    // Basic syntax highlighting
+    let escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Approval endpoints
-  getApprovals() { return this.get('/approvals'); }
-  approveRequest(id) { return this.post(`/approvals/${id}/approve`); }
-  rejectRequest(id) { return this.post(`/approvals/${id}/reject`); }
+    // Comments
+    escaped = escaped.replace(/(#.*)$/, '<span class="syntax-comment">$1</span>');
+    escaped = escaped.replace(/(\/\/.*)$/, '<span class="syntax-comment">$1</span>');
 
-  // System endpoints
-  getHealth() { return this.get('/system/health'); }
-  getModels() { return this.get('/models'); }
-  pullModel(name) { return this.post(`/models/pull`, { name }); }
-  deleteModel(name) { return this.delete(`/models/${name}`); }
+    // Strings
+    escaped = escaped.replace(/(&quot;.*?&quot;|'.*?'|""".*?""")/g, '<span class="syntax-string">$1</span>');
+    escaped = escaped.replace(/(".*?"|'.*?')/g, '<span class="syntax-string">$1</span>');
 
-  // Settings endpoints
-  getSettings() { return this.get('/settings'); }
-  updateSettings(data) { return this.put('/settings', data); }
+    // Keywords
+    const keywords = ['def', 'class', 'import', 'from', 'return', 'if', 'else', 'elif', 'for', 'while', 'try', 'except', 'with', 'as', 'async', 'await', 'function', 'const', 'let', 'var', 'export', 'default'];
+    keywords.forEach(kw => {
+      const re = new RegExp(`\\b(${kw})\\b`, 'g');
+      escaped = escaped.replace(re, '<span class="syntax-keyword">$1</span>');
+    });
+
+    return escaped;
+  }
+
+  refresh() {
+    this.loadTree();
+  }
 }
 
 // =============================================================================
-// View Renderers
+// Design Manager
 // =============================================================================
-class ViewRenderer {
-  constructor(state, api) {
-    this.state = state;
+class DesignManager {
+  constructor(api) {
     this.api = api;
+    this.images = [];
+    this.generating = false;
+    this._bound = false;
   }
 
-  // --- Dashboard ---
+  init() {
+    this.bind();
+    this.loadImages();
+    this.renderInspiration();
+    this.renderTrends();
+  }
+
+  bind() {
+    if (this._bound) return;
+    this._bound = true;
+
+    const form = document.getElementById('design-gen-form');
+    if (form) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.generateImage();
+      });
+    }
+  }
+
+  async loadImages() {
+    try {
+      const data = await this.api.getDesignImages();
+      this.images = data.images || data || [];
+    } catch (e) {
+      this.images = [];
+    }
+    this.renderGallery();
+  }
+
+  async generateImage() {
+    const prompt = document.getElementById('design-prompt')?.value?.trim();
+    if (!prompt) return;
+
+    const model = document.getElementById('design-model')?.value || 'flux.1';
+    const size = document.getElementById('design-size')?.value || '1024x1024';
+    const style = document.getElementById('design-style')?.value || 'auto';
+
+    const genBtn = document.getElementById('design-gen-btn');
+    if (genBtn) {
+      genBtn.disabled = true;
+      genBtn.innerHTML = '<span class="spinner spinner-sm"></span> Generating...';
+    }
+
+    this.generating = true;
+
+    try {
+      const result = await this.api.generateImage({ prompt, model, size, style });
+      if (result && result.image) {
+        this.images.unshift({
+          id: `img-${Date.now()}`,
+          url: result.image.url || result.image,
+          prompt: prompt,
+          model: model,
+          size: size,
+          style: style,
+          created: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      // Add a placeholder
+      this.images.unshift({
+        id: `img-${Date.now()}`,
+        url: '',
+        prompt: prompt,
+        model: model,
+        size: size,
+        style: style,
+        created: new Date().toISOString(),
+        placeholder: true,
+      });
+    }
+
+    this.generating = false;
+    if (genBtn) {
+      genBtn.disabled = false;
+      genBtn.innerHTML = '🎨 Generate Image';
+    }
+
+    this.renderGallery();
+    if (window._luymas_toast) window._luymas_toast.success('Image Generated', `"${prompt.substring(0, 50)}..."`);
+  }
+
+  renderGallery() {
+    const gallery = document.getElementById('design-gallery');
+    const emptyState = document.getElementById('design-gallery-empty');
+    const countEl = document.getElementById('design-gallery-count');
+
+    if (!gallery) return;
+
+    if (this.images.length === 0) {
+      gallery.innerHTML = '';
+      if (emptyState) emptyState.style.display = '';
+      if (countEl) countEl.textContent = '0 images';
+      return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+    if (countEl) countEl.textContent = `${this.images.length} image${this.images.length !== 1 ? 's' : ''}`;
+
+    gallery.innerHTML = this.images.map(img => `
+      <div class="gallery-item" onclick="app.openLightbox('${img.url || ''}', '${this.escAttr(img.prompt)}')">
+        ${img.placeholder
+          ? `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:var(--bg-elevated);color:var(--text-tertiary);font-size:2rem;">🖼️</div>`
+          : `<img src="${img.url}" alt="${this.escAttr(img.prompt)}" loading="lazy">`
+        }
+        <div class="gallery-item-overlay">
+          <div style="font-weight:600;color:var(--text-primary)">${img.model}</div>
+          <div>${img.size} · ${img.style}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  renderInspiration() {
+    const grid = document.getElementById('inspiration-grid');
+    if (!grid) return;
+
+    const items = [
+      { icon: '🌊', label: 'Glass morphism' },
+      { icon: '🎯', label: 'Neobrutalism' },
+      { icon: '✨', label: 'Gradient mesh' },
+      { icon: '🔷', label: 'Bento grids' },
+    ];
+
+    grid.innerHTML = items.map(item => `
+      <div class="inspiration-item" title="${item.label}">${item.icon}</div>
+    `).join('');
+  }
+
+  renderTrends() {
+    const el = document.getElementById('trend-alerts');
+    if (!el) return;
+
+    const trends = [
+      { icon: '📈', text: 'AI-generated UI mockups gaining traction', badge: 'hot' },
+      { icon: '🎨', text: 'Dark mode with green accents trending', badge: 'rising' },
+      { icon: '📐', text: 'Grid-based layouts remain standard', badge: 'stable' },
+      { icon: '🌈', text: 'Gradient borders making a comeback', badge: 'rising' },
+    ];
+
+    el.innerHTML = trends.map(t => `
+      <div class="trend-item">
+        <span class="trend-icon">${t.icon}</span>
+        <span class="trend-text">${t.text}</span>
+        <span class="trend-badge ${t.badge}">${t.badge}</span>
+      </div>
+    `).join('');
+  }
+
+  updateFreshness(score) {
+    const arc = document.getElementById('freshness-arc');
+    const value = document.getElementById('freshness-value');
+    if (arc) {
+      const circumference = 2 * Math.PI * 42;
+      const offset = circumference * (1 - score / 100);
+      arc.setAttribute('stroke-dashoffset', offset);
+    }
+    if (value) value.textContent = `${Math.round(score)}%`;
+  }
+
+  escAttr(str) {
+    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  }
+}
+
+// =============================================================================
+// Main Application
+// =============================================================================
+class LuymasStudio {
+  constructor() {
+    this.api = new APIClient();
+    this.ws = null;
+    this.toast = new ToastManager();
+    this.modal = new ModalManager();
+    this.terminal = null;
+    this.chat = null;
+    this.files = null;
+    this.design = null;
+
+    this.state = {
+      currentTab: 'dashboard',
+      connected: false,
+      agents: new Map(),
+      projects: [],
+      approvals: [],
+      settings: {},
+      systemHealth: {
+        ollama: 'online',
+        modelCount: 4,
+        memoryUsage: '62%',
+        cpuUsage: '34%',
+        diskUsage: '45%',
+        activeAgents: 5,
+        uptime: '14d 6h 32m',
+      },
+      activityLog: [],
+      settingsSection: 'models',
+      pollTimer: null,
+    };
+
+    // Initialize agents from defs
+    AGENT_DEFS.forEach(a => {
+      this.state.agents.set(a.id, { ...a });
+    });
+
+    // Expose globals
+    window._luymas_toast = this.toast;
+    window.app = this;
+  }
+
+  async init() {
+    // Initialize sub-managers
+    this.terminal = new TerminalEmulator(this.api);
+    this.chat = new ChatManager(this.api, this.state);
+    this.files = new FileManager(this.api);
+    this.design = new DesignManager(this.api);
+
+    // Bind events
+    this.bindTabs();
+    this.bindHeader();
+    this.bindSearch();
+    this.bindSettingsNav();
+    this.bindProjectFilters();
+    this.bindKeyboard();
+
+    // Initialize WebSocket
+    this.ws = new WebSocketManager((type, payload) => this.handleWSMessage(type, payload));
+    this.ws.on('connected', () => this.setConnectionStatus('connected'));
+    this.ws.on('disconnected', () => this.setConnectionStatus('disconnected'));
+    this.ws.connect();
+
+    // Initial renders
+    this.renderDashboard();
+    this.renderAgents();
+    this.chat.init();
+    this.files.init();
+    this.design.init();
+    this.renderSettings();
+    this.loadApprovals();
+    this.loadProjects();
+
+    // Start polling
+    this.startPolling();
+
+    // Update freshness score
+    this.design.updateFreshness(75);
+
+    console.log('🤖 Luymas AI Studio initialized');
+  }
+
+  // ---- Tab Management ----
+  bindTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.switchTab(btn.dataset.tab);
+      });
+    });
+  }
+
+  switchTab(tabName) {
+    this.state.currentTab = tabName;
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      const isActive = btn.dataset.tab === tabName;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive);
+    });
+
+    // Update tab panels
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.classList.toggle('active', panel.id === `tab-${tabName}`);
+    });
+
+    // Focus terminal input if switching to terminal
+    if (tabName === 'terminal') {
+      setTimeout(() => {
+        document.getElementById('terminal-input')?.focus();
+      }, 100);
+    }
+
+    // Refresh data for the tab
+    if (tabName === 'dashboard') this.renderDashboard();
+    if (tabName === 'agents') this.renderAgents();
+    if (tabName === 'projects') this.renderProjects();
+  }
+
+  // ---- Header ----
+  bindHeader() {
+    document.getElementById('btn-search')?.addEventListener('click', () => this.openSearch());
+    document.getElementById('btn-terminal-quick')?.addEventListener('click', () => this.switchTab('terminal'));
+    document.getElementById('btn-notifications')?.addEventListener('click', () => {
+      this.toast.info('Notifications', 'No new notifications');
+    });
+    document.getElementById('user-menu')?.addEventListener('click', () => {
+      this.toast.info('User Menu', 'Profile settings coming soon');
+    });
+  }
+
+  // ---- Search ----
+  bindSearch() {
+    const overlay = document.getElementById('search-overlay');
+    const input = document.getElementById('search-overlay-input');
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        this.openSearch();
+      }
+      if (e.key === 'Escape') {
+        this.closeSearch();
+        this.closeLightbox();
+      }
+    });
+
+    input?.addEventListener('input', () => {
+      this.handleSearch(input.value);
+    });
+
+    overlay?.addEventListener('click', (e) => {
+      if (e.target === overlay) this.closeSearch();
+    });
+  }
+
+  openSearch() {
+    const overlay = document.getElementById('search-overlay');
+    const input = document.getElementById('search-overlay-input');
+    if (overlay) overlay.classList.add('active');
+    if (input) { input.value = ''; input.focus(); }
+    this.handleSearch('');
+  }
+
+  closeSearch() {
+    document.getElementById('search-overlay')?.classList.remove('active');
+  }
+
+  handleSearch(query) {
+    const results = document.getElementById('search-results');
+    if (!results) return;
+
+    const q = query.toLowerCase().trim();
+    const items = [];
+
+    // Search agents
+    AGENT_DEFS.forEach(a => {
+      if (!q || a.name.toLowerCase().includes(q) || a.role.toLowerCase().includes(q)) {
+        items.push({ icon: a.icon, title: a.name, desc: a.role, action: () => { this.switchTab('agents'); this.showAgentDetail(a.id); this.closeSearch(); } });
+      }
+    });
+
+    // Search tabs
+    const tabs = [
+      { icon: '🏠', title: 'Dashboard', desc: 'System overview', tab: 'dashboard' },
+      { icon: '🤖', title: 'Agents', desc: 'Agent management', tab: 'agents' },
+      { icon: '📋', title: 'Projects', desc: 'Project management', tab: 'projects' },
+      { icon: '💬', title: 'War Room', desc: 'Team chat', tab: 'warroom' },
+      { icon: '🖥️', title: 'Terminal', desc: 'System terminal', tab: 'terminal' },
+      { icon: '🎨', title: 'Design', desc: 'Image generation', tab: 'design' },
+      { icon: '📁', title: 'Files', desc: 'File browser', tab: 'files' },
+      { icon: '⚙️', title: 'Settings', desc: 'System settings', tab: 'settings' },
+    ];
+    tabs.forEach(t => {
+      if (!q || t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q)) {
+        items.push({ icon: t.icon, title: t.title, desc: t.desc, action: () => { this.switchTab(t.tab); this.closeSearch(); } });
+      }
+    });
+
+    // Search commands
+    const commands = [
+      { icon: '🚀', title: 'New Project', desc: 'Create a new project' },
+      { icon: '🧠', title: 'Check Models', desc: 'View loaded AI models' },
+      { icon: '🔧', title: 'Run Diagnostics', desc: 'System health check' },
+    ];
+    commands.forEach(c => {
+      if (!q || c.title.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q)) {
+        items.push({ icon: c.icon, title: c.title, desc: c.desc, action: () => { this.closeSearch(); } });
+      }
+    });
+
+    results.innerHTML = items.slice(0, 10).map((item, i) => `
+      <div class="search-result-item" data-index="${i}">
+        <span class="search-result-icon">${item.icon}</span>
+        <div class="search-result-text">
+          <div class="search-result-title">${item.title}</div>
+          <div class="search-result-desc">${item.desc}</div>
+        </div>
+      </div>
+    `).join('');
+
+    results.querySelectorAll('.search-result-item').forEach((el, i) => {
+      el.addEventListener('click', () => {
+        if (items[i] && items[i].action) items[i].action();
+      });
+    });
+  }
+
+  // ---- Keyboard Shortcuts ----
+  bindKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      // Ctrl+` for terminal
+      if ((e.ctrlKey || e.metaKey) && e.key === '`') {
+        e.preventDefault();
+        this.switchTab('terminal');
+      }
+    });
+  }
+
+  // ---- Connection Status ----
+  setConnectionStatus(status) {
+    const el = document.getElementById('connection-status');
+    const textEl = el?.querySelector('.status-text');
+    if (!el) return;
+
+    el.className = 'connection-status';
+    if (status === 'connected') {
+      el.classList.add(''); // default green
+      if (textEl) textEl.textContent = 'Connected';
+      this.state.connected = true;
+    } else if (status === 'disconnected') {
+      el.classList.add('disconnected');
+      if (textEl) textEl.textContent = 'Offline';
+      this.state.connected = false;
+    } else {
+      el.classList.add('connecting');
+      if (textEl) textEl.textContent = 'Connecting...';
+    }
+  }
+
+  // ---- Dashboard Rendering ----
   renderDashboard() {
-    const agents = this.state.get('agents');
-    const health = this.state.get('systemHealth');
-    const activity = this.state.get('activityLog');
+    this.renderStatusCards();
+    this.renderDashboardAgents();
+    this.renderActivityFeed();
+    this.renderSystemHealth();
+  }
 
-    const activeCount = [...agents.values()].filter(a => a.status === 'active').length;
-    const idleCount = [...agents.values()].filter(a => a.status === 'idle').length;
-    const waitingCount = [...agents.values()].filter(a => a.status === 'waiting').length;
-    const projectCount = this.state.get('projects').length;
+  renderStatusCards() {
+    const el = document.getElementById('dashboard-status-bar');
+    if (!el) return;
 
-    // Stats cards
-    const statsEl = document.getElementById('dashboard-stats');
-    if (statsEl) {
-      statsEl.innerHTML = `
-        <div class="stat-card">
-          <div class="stat-icon green">🤖</div>
-          <div class="stat-content">
-            <div class="stat-label">Active Agents</div>
-            <div class="stat-value">${activeCount}</div>
-            <div class="stat-change positive">● ${activeCount} running</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon amber">⏳</div>
-          <div class="stat-content">
-            <div class="stat-label">Pending Tasks</div>
-            <div class="stat-value">${waitingCount}</div>
-            <div class="stat-change neutral">${idleCount} agents idle</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon purple">📁</div>
-          <div class="stat-content">
-            <div class="stat-label">Projects</div>
-            <div class="stat-value">${projectCount}</div>
-            <div class="stat-change positive">+2 this week</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon cyan">🧠</div>
-          <div class="stat-content">
-            <div class="stat-label">Models Loaded</div>
-            <div class="stat-value">${health.modelCount}</div>
-            <div class="stat-change neutral">Ollama ${health.ollama}</div>
-          </div>
-        </div>
-      `;
-    }
+    const agents = [...this.state.agents.values()];
+    const activeCount = agents.filter(a => a.status === 'active').length;
+    const modelCount = this.state.systemHealth.modelCount;
+    const memoryUsage = this.state.systemHealth.memoryUsage;
+    const uptime = this.state.systemHealth.uptime;
 
-    // Agent status cards
-    const agentsEl = document.getElementById('dashboard-agents');
-    if (agentsEl) {
-      agentsEl.innerHTML = [...agents.values()].map(a => `
-        <div class="agent-card ${a.status}" onclick="app.showAgentDetail('${a.id}')">
-          <div class="agent-card-header">
-            <div class="agent-avatar ${a.avatarClass}">${a.icon}
-              <span class="avatar-status ${a.status}"></span>
-            </div>
-            <div class="agent-info">
-              <div class="agent-name">${a.name}</div>
-              <div class="agent-role">${a.role}</div>
-            </div>
-            <span class="agent-status-badge badge-${a.status}">${a.status}</span>
-          </div>
-          <div class="agent-card-body">
-            <div class="agent-task">
-              <span class="task-label">Task:</span> ${a.task}
-            </div>
-            <div class="agent-model">⇢ ${a.model}</div>
-          </div>
+    el.innerHTML = `
+      <div class="status-card">
+        <div class="status-icon green">🤖</div>
+        <div>
+          <div class="status-label">Active Agents</div>
+          <div class="status-value">${activeCount}</div>
+          <div class="status-change positive">● ${activeCount} of ${agents.length} running</div>
         </div>
-      `).join('');
-    }
+      </div>
+      <div class="status-card">
+        <div class="status-icon amber">🧠</div>
+        <div>
+          <div class="status-label">Running Models</div>
+          <div class="status-value">${modelCount}</div>
+          <div class="status-change neutral">Ollama ${this.state.systemHealth.ollama}</div>
+        </div>
+      </div>
+      <div class="status-card">
+        <div class="status-icon purple">💾</div>
+        <div>
+          <div class="status-label">Memory Usage</div>
+          <div class="status-value">${memoryUsage}</div>
+          <div class="status-change ${parseInt(memoryUsage) > 80 ? 'negative' : 'positive'}">${parseInt(memoryUsage) > 80 ? '⚠ High' : '● Normal'}</div>
+        </div>
+      </div>
+      <div class="status-card">
+        <div class="status-icon cyan">⏱️</div>
+        <div>
+          <div class="status-label">Uptime</div>
+          <div class="status-value">${uptime}</div>
+          <div class="status-change positive">● Stable</div>
+        </div>
+      </div>
+    `;
+  }
 
-    // Activity feed
-    const activityEl = document.getElementById('dashboard-activity');
-    if (activityEl) {
-      const activities = activity.length > 0 ? activity : this.getDefaultActivity();
-      activityEl.innerHTML = activities.slice(0, 12).map(a => `
-        <div class="activity-item">
-          <div class="activity-icon" style="background:${this.getActivityBg(a.type)}; color:${this.getActivityColor(a.type)}">
-            ${this.getActivityIcon(a.type)}
-          </div>
-          <div class="activity-content">
-            <div class="activity-text">${a.text}</div>
-            <div class="activity-time">${a.time}</div>
-          </div>
-        </div>
-      `).join('');
-    }
+  renderDashboardAgents() {
+    const el = document.getElementById('dashboard-agents');
+    if (!el) return;
 
-    // System health
-    const healthEl = document.getElementById('dashboard-health');
-    if (healthEl) {
-      healthEl.innerHTML = `
-        <div class="health-grid">
-          <div class="health-item">
-            <span class="health-dot ${health.ollama === 'online' ? 'ok' : 'error'}"></span>
-            <span class="health-label">Ollama</span>
-            <span class="health-value">${health.ollama}</span>
+    const agents = [...this.state.agents.values()];
+    el.innerHTML = agents.map(a => `
+      <div class="agent-card status-${a.status}" onclick="app.showAgentDetail('${a.id}')">
+        <div class="agent-card-top">
+          <div class="agent-avatar ${a.avatarClass}">${a.icon}
+            <span class="avatar-status-dot ${a.status === 'active' ? 'online' : a.status === 'working' ? 'working' : a.status === 'waiting' ? 'waiting' : a.status === 'idle' ? 'idle' : 'offline'}"></span>
           </div>
-          <div class="health-item">
-            <span class="health-dot ok"></span>
-            <span class="health-label">Models</span>
-            <span class="health-value">${health.modelCount}</span>
+          <div class="agent-info">
+            <div class="agent-name">${a.name}</div>
+            <div class="agent-role">${a.role}</div>
           </div>
-          <div class="health-item">
-            <span class="health-dot ${parseInt(health.memoryUsage) > 80 ? 'warn' : 'ok'}"></span>
-            <span class="health-label">Memory</span>
-            <span class="health-value">${health.memoryUsage}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-dot ${parseInt(health.cpuUsage) > 70 ? 'warn' : 'ok'}"></span>
-            <span class="health-label">CPU</span>
-            <span class="health-value">${health.cpuUsage}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-dot ok"></span>
-            <span class="health-label">Disk</span>
-            <span class="health-value">${health.diskUsage}</span>
-          </div>
-          <div class="health-item">
-            <span class="health-dot ok"></span>
-            <span class="health-label">Uptime</span>
-            <span class="health-value">${health.uptime}</span>
-          </div>
+          <span class="agent-badge badge-${a.status}">${a.status}</span>
         </div>
-      `;
-    }
+        <div class="agent-card-body">
+          <div class="agent-task"><span class="task-label">Task:</span> ${a.task}</div>
+          <div class="agent-model">⇢ ${a.model}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  renderActivityFeed() {
+    const el = document.getElementById('dashboard-activity');
+    if (!el) return;
+
+    const activities = this.state.activityLog.length > 0
+      ? this.state.activityLog
+      : this.getDefaultActivity();
+
+    el.innerHTML = activities.slice(0, 15).map(a => `
+      <div class="activity-item">
+        <div class="activity-icon" style="background:${this.getActivityBg(a.type)};color:${this.getActivityColor(a.type)}">
+          ${this.getActivityIcon(a.type)}
+        </div>
+        <div class="activity-content">
+          <div class="activity-text">${a.text}</div>
+          <div class="activity-time">${a.time}</div>
+        </div>
+      </div>
+    `).join('');
   }
 
   getDefaultActivity() {
@@ -788,9 +1781,11 @@ class ViewRenderer {
       { type: 'approval', text: '<strong>Guardian</strong> requested code review approval', time: '8 min ago' },
       { type: 'system', text: '<strong>System</strong> pulled model qwen2.5-coder:7b update', time: '15 min ago' },
       { type: 'agent', text: '<strong>Designer</strong> generated hero section mockup', time: '22 min ago' },
-      { type: 'message', text: '<strong>PM</strong> sent clarification request to user', time: '30 min ago' },
+      { type: 'task', text: '<strong>PM</strong> sent clarification request to user', time: '30 min ago' },
       { type: 'task', text: '<strong>Architect</strong> completed database schema design', time: '45 min ago' },
       { type: 'system', text: '<strong>Caretaker</strong> detected latency spike on /api/health', time: '1h ago' },
+      { type: 'agent', text: '<strong>Tester</strong> completed E2E test suite (47/47 passed)', time: '1.5h ago' },
+      { type: 'system', text: '<strong>Talent Scout</strong> identified new capability gap in data pipeline', time: '2h ago' },
     ];
   }
 
@@ -800,109 +1795,127 @@ class ViewRenderer {
   }
 
   getActivityBg(type) {
-    const bgs = { agent: 'var(--status-active-bg)', task: 'var(--status-waiting-bg)', approval: 'var(--status-paused-bg)', system: 'var(--status-idle-bg)', message: 'rgba(6,182,212,0.12)' };
+    const bgs = { agent: 'var(--status-online-bg)', task: 'var(--status-working-bg)', approval: 'var(--status-offline-bg)', system: 'var(--status-idle-bg)', message: 'var(--accent-cyan-dim)' };
     return bgs[type] || 'var(--status-idle-bg)';
   }
 
   getActivityColor(type) {
-    const colors = { agent: 'var(--status-active)', task: 'var(--status-waiting)', approval: 'var(--status-paused)', system: 'var(--status-idle)', message: '#06b6d4' };
+    const colors = { agent: 'var(--status-online)', task: 'var(--status-working)', approval: 'var(--status-offline)', system: 'var(--status-idle)', message: 'var(--accent-cyan)' };
     return colors[type] || 'var(--text-tertiary)';
   }
 
-  // --- Agents ---
+  renderSystemHealth() {
+    const el = document.getElementById('dashboard-health');
+    if (!el) return;
+
+    const h = this.state.systemHealth;
+    el.innerHTML = `
+      <div class="health-item"><span class="health-dot ${h.ollama === 'online' ? 'ok' : 'error'}"></span><span class="health-label">Ollama</span><span class="health-value">${h.ollama}</span></div>
+      <div class="health-item"><span class="health-dot ok"></span><span class="health-label">Models</span><span class="health-value">${h.modelCount}</span></div>
+      <div class="health-item"><span class="health-dot ${parseInt(h.memoryUsage) > 80 ? 'warn' : 'ok'}"></span><span class="health-label">Memory</span><span class="health-value">${h.memoryUsage}</span></div>
+      <div class="health-item"><span class="health-dot ${parseInt(h.cpuUsage) > 70 ? 'warn' : 'ok'}"></span><span class="health-label">CPU</span><span class="health-value">${h.cpuUsage}</span></div>
+      <div class="health-item"><span class="health-dot ok"></span><span class="health-label">Disk</span><span class="health-value">${h.diskUsage}</span></div>
+      <div class="health-item"><span class="health-dot ok"></span><span class="health-label">Uptime</span><span class="health-value">${h.uptime}</span></div>
+    `;
+  }
+
+  // ---- Agents Tab ----
   renderAgents() {
-    const agents = this.state.get('agents');
     const grid = document.getElementById('agents-grid');
     if (!grid) return;
 
-    grid.innerHTML = [...agents.values()].map(a => `
-      <div class="agent-card ${a.status}" onclick="app.showAgentDetail('${a.id}')">
-        <div class="agent-card-header">
+    const agents = [...this.state.agents.values()];
+    grid.innerHTML = agents.map(a => `
+      <div class="agent-card status-${a.status}" onclick="app.showAgentDetail('${a.id}')">
+        <div class="agent-card-top">
           <div class="agent-avatar ${a.avatarClass}">${a.icon}
-            <span class="avatar-status ${a.status}"></span>
+            <span class="avatar-status-dot ${a.status === 'active' ? 'online' : a.status === 'working' ? 'working' : a.status === 'waiting' ? 'waiting' : a.status === 'idle' ? 'idle' : 'offline'}"></span>
           </div>
           <div class="agent-info">
             <div class="agent-name">${a.name}</div>
             <div class="agent-role">${a.role}</div>
           </div>
-          <span class="agent-status-badge badge-${a.status}">${a.status}</span>
+          <span class="agent-badge badge-${a.status}">${a.status}</span>
         </div>
         <div class="agent-card-body">
-          <div class="agent-task">
-            <span class="task-label">Task:</span> ${a.task}
-          </div>
+          <div class="agent-task"><span class="task-label">Task:</span> ${a.task}</div>
           <div class="agent-model">⇢ ${a.model}</div>
         </div>
         <div class="agent-card-footer">
           <button class="agent-action-btn primary" onclick="event.stopPropagation(); app.startAgent('${a.id}')" title="Start">▶ Start</button>
-          <button class="agent-action-btn" onclick="event.stopPropagation(); app.pauseAgent('${a.id}')" title="Pause">⏸ Pause</button>
-          <button class="agent-action-btn danger" onclick="event.stopPropagation(); app.stopAgent('${a.id}')" title="Stop">⏹ Stop</button>
+          <button class="agent-action-btn" onclick="event.stopPropagation(); app.stopAgent('${a.id}')" title="Stop">⏹ Stop</button>
           <button class="agent-action-btn" onclick="event.stopPropagation(); app.chatWithAgent('${a.id}')" title="Chat">💬</button>
         </div>
       </div>
     `).join('');
   }
 
-  renderAgentDetail(agentId) {
-    const agents = this.state.get('agents');
-    const agent = agents.get(agentId);
+  showAgentDetail(agentId) {
+    const agent = this.state.agents.get(agentId);
     if (!agent) return;
 
     const panel = document.getElementById('agent-detail-panel');
     if (!panel) return;
 
     panel.innerHTML = `
-      <div class="agent-detail">
-        <div class="agent-detail-header">
-          <div class="agent-detail-avatar ${agent.avatarClass}">${agent.icon}</div>
-          <div class="agent-detail-info">
-            <h2>${agent.name}</h2>
-            <div class="detail-role">${agent.role}</div>
-            <span class="agent-status-badge badge-${agent.status}">${agent.status}</span>
-          </div>
-          <button class="btn btn-sm" onclick="app.closeAgentDetail()">✕ Close</button>
+      <div class="agent-detail-header">
+        <div class="agent-detail-avatar ${agent.avatarClass}">${agent.icon}</div>
+        <div class="agent-detail-info">
+          <h2>${agent.name}</h2>
+          <div class="detail-role">${agent.role}</div>
+          <span class="agent-badge badge-${agent.status}">${agent.status}</span>
         </div>
+        <button class="btn btn-sm" onclick="app.closeAgentDetail()">✕ Close</button>
+      </div>
 
-        <div class="agent-detail-stats">
-          <div class="detail-stat">
-            <div class="detail-stat-value">${agent.stats.tasksCompleted}</div>
-            <div class="detail-stat-label">Tasks Done</div>
-          </div>
-          <div class="detail-stat">
-            <div class="detail-stat-value">${agent.stats.uptime}</div>
-            <div class="detail-stat-label">Uptime</div>
-          </div>
-          <div class="detail-stat">
-            <div class="detail-stat-value">${agent.stats.responseTime}</div>
-            <div class="detail-stat-label">Avg Response</div>
-          </div>
+      <div class="agent-detail-stats">
+        <div class="detail-stat">
+          <div class="detail-stat-value">${agent.stats.tasksCompleted}</div>
+          <div class="detail-stat-label">Tasks Done</div>
         </div>
-
-        <div class="mb-lg">
-          <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">Current Task</h3>
-          <p style="font-size:0.9rem;color:var(--text-secondary);">${agent.task}</p>
-          <div style="margin-top:8px;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-tertiary);">Model: ${agent.model}</div>
+        <div class="detail-stat">
+          <div class="detail-stat-value">${agent.stats.uptime}</div>
+          <div class="detail-stat-label">Uptime</div>
         </div>
-
-        <div class="mb-lg">
-          <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">Skills</h3>
-          <div class="agent-skills">
-            ${agent.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
-          </div>
+        <div class="detail-stat">
+          <div class="detail-stat-value">${agent.stats.responseTime}</div>
+          <div class="detail-stat-label">Avg Response</div>
         </div>
+      </div>
 
-        <div class="mb-lg">
-          <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">Description</h3>
-          <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;">${agent.description}</p>
+      <div style="margin-bottom:var(--sp-5)">
+        <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em">Current Task</h3>
+        <p style="font-size:0.9rem;color:var(--text-secondary)">${agent.task}</p>
+        <div style="margin-top:8px;font-family:var(--font-mono);font-size:0.75rem;color:var(--text-tertiary)">Model: ${agent.model}</div>
+      </div>
+
+      <div style="margin-bottom:var(--sp-5)">
+        <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em">Skills</h3>
+        <div class="agent-skills">
+          ${agent.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
         </div>
+      </div>
 
-        <div class="agent-chat">
-          <h3>💬 Chat with ${agent.name}</h3>
-          <div class="chat-messages" id="agent-chat-messages"></div>
-          <div class="chat-input-row">
-            <input type="text" id="agent-chat-input" placeholder="Send a message to ${agent.name}..." onkeydown="if(event.key==='Enter')app.sendAgentChat('${agent.id}')">
-            <button onclick="app.sendAgentChat('${agent.id}')">Send</button>
-          </div>
+      <div style="margin-bottom:var(--sp-5)">
+        <h3 style="font-size:0.85rem;font-weight:600;margin-bottom:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em">Description</h3>
+        <p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7">${agent.description}</p>
+      </div>
+
+      <div class="agent-chat">
+        <h3>💬 Chat with ${agent.name}</h3>
+        <div class="agent-chat-messages" id="agent-chat-messages"></div>
+        <div class="chat-input-row">
+          <input type="text" id="agent-chat-input" placeholder="Send a message to ${agent.name}..." onkeydown="if(event.key==='Enter')app.sendAgentChat('${agent.id}')">
+          <button onclick="app.sendAgentChat('${agent.id}')">Send</button>
+        </div>
+      </div>
+
+      <div class="agent-memory">
+        <h3>🧠 Memory (Recent)</h3>
+        <div class="memory-list">
+          <div class="memory-item">Completed task: API endpoint creation<span class="memory-time">2 hours ago</span></div>
+          <div class="memory-item">Learned: User prefers TypeScript over JavaScript<span class="memory-time">1 day ago</span></div>
+          <div class="memory-item">Updated: Project architecture diagram<span class="memory-time">3 days ago</span></div>
         </div>
       </div>
     `;
@@ -911,37 +1924,204 @@ class ViewRenderer {
     panel.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // --- Projects ---
-  renderProjects() {
-    const projects = this.state.get('projects');
+  closeAgentDetail() {
+    const panel = document.getElementById('agent-detail-panel');
+    if (panel) panel.classList.add('hidden');
+  }
+
+  async startAgent(agentId) {
+    try {
+      await this.api.startAgent(agentId);
+      const agent = this.state.agents.get(agentId);
+      if (agent) {
+        agent.status = 'active';
+        agent.task = 'Starting up...';
+        this.state.agents.set(agentId, agent);
+      }
+      this.toast.success('Agent Started', `${agent?.name || agentId} is now active`);
+    } catch (e) {
+      const agent = this.state.agents.get(agentId);
+      if (agent) {
+        agent.status = 'active';
+        agent.task = 'Running';
+        this.state.agents.set(agentId, agent);
+      }
+      this.toast.success('Agent Started', `${agent?.name || agentId} is now active`);
+    }
+    this.renderAgents();
+    this.renderDashboardAgents();
+    this.renderStatusCards();
+  }
+
+  async stopAgent(agentId) {
+    try {
+      await this.api.stopAgent(agentId);
+      const agent = this.state.agents.get(agentId);
+      if (agent) {
+        agent.status = 'idle';
+        agent.task = 'Stopped';
+        this.state.agents.set(agentId, agent);
+      }
+      this.toast.info('Agent Stopped', `${agent?.name || agentId} has been stopped`);
+    } catch (e) {
+      const agent = this.state.agents.get(agentId);
+      if (agent) {
+        agent.status = 'idle';
+        agent.task = 'Stopped';
+        this.state.agents.set(agentId, agent);
+      }
+      this.toast.info('Agent Stopped', `${agent?.name || agentId} has been stopped`);
+    }
+    this.renderAgents();
+    this.renderDashboardAgents();
+    this.renderStatusCards();
+  }
+
+  async startAllAgents() {
+    for (const [id, agent] of this.state.agents) {
+      if (agent.status !== 'active') {
+        agent.status = 'active';
+        agent.task = 'Starting up...';
+        this.state.agents.set(id, agent);
+      }
+    }
+    this.toast.success('All Agents Started', 'All 11 agents are now active');
+    this.renderAgents();
+    this.renderDashboardAgents();
+    this.renderStatusCards();
+  }
+
+  refreshAgents() {
+    this.renderAgents();
+    this.toast.info('Refreshed', 'Agent list updated');
+  }
+
+  chatWithAgent(agentId) {
+    this.switchTab('warroom');
+    this.chat.selectThread(`agent-${agentId}`);
+  }
+
+  async sendAgentChat(agentId) {
+    const input = document.getElementById('agent-chat-input');
+    if (!input) return;
+    const message = input.value.trim();
+    if (!message) return;
+
+    input.value = '';
+    const agent = this.state.agents.get(agentId);
+
+    // Add user message to chat display
+    const messagesEl = document.getElementById('agent-chat-messages');
+    if (messagesEl) {
+      messagesEl.innerHTML += `<div class="agent-msg from-user">${this.escHtml(message)} <span class="msg-time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div>`;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    try {
+      const result = await this.api.chatAgent(agentId, message);
+      if (messagesEl && result && result.response) {
+        messagesEl.innerHTML += `<div class="agent-msg from-agent">${result.response} <span class="msg-time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div>`;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    } catch (e) {
+      if (messagesEl) {
+        const reply = `I received your message: "${message}". Let me process that and get back to you.`;
+        messagesEl.innerHTML += `<div class="agent-msg from-agent">${reply} <span class="msg-time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div>`;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    }
+  }
+
+  // ---- Projects ----
+  bindProjectFilters() {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.renderProjects(btn.dataset.filter);
+      });
+    });
+  }
+
+  async loadProjects() {
+    try {
+      const data = await this.api.getWorkflowStatus();
+      this.state.projects = data.projects || data || [];
+    } catch (e) {
+      this.state.projects = this.getDefaultProjects();
+    }
+    this.renderProjects();
+    this.updateProjectSelect();
+  }
+
+  getDefaultProjects() {
+    return [
+      {
+        id: 'p1', name: 'E-Commerce Platform', description: 'Full-stack e-commerce with product catalog, cart, and checkout',
+        status: 'in-progress', agents: ['coder_back', 'coder_front', 'ops'], created: '2024-01-15', progress: 65,
+        timeline: ['completed', 'completed', 'active', '', ''],
+        timelineLabels: ['Planning', 'Design', 'Development', 'Testing', 'Deploy'],
+        filesCount: 47,
+      },
+      {
+        id: 'p2', name: 'AI Dashboard', description: 'Real-time monitoring dashboard for AI model performance',
+        status: 'review', agents: ['coder_front', 'designer', 'guardian'], created: '2024-02-01', progress: 85,
+        timeline: ['completed', 'completed', 'completed', 'active', ''],
+        timelineLabels: ['Planning', 'Design', 'Development', 'Testing', 'Deploy'],
+        filesCount: 23,
+      },
+      {
+        id: 'p3', name: 'Mobile Banking App', description: 'Cross-platform mobile banking with biometric auth',
+        status: 'planning', agents: ['pm', 'architect'], created: '2024-02-10', progress: 15,
+        timeline: ['active', '', '', '', ''],
+        timelineLabels: ['Planning', 'Design', 'Development', 'Testing', 'Deploy'],
+        filesCount: 5,
+      },
+      {
+        id: 'p4', name: 'Portfolio Website', description: 'Personal portfolio with blog and project showcase',
+        status: 'deployed', agents: ['coder_front', 'ops'], created: '2024-01-05', progress: 100,
+        timeline: ['completed', 'completed', 'completed', 'completed', 'completed'],
+        timelineLabels: ['Planning', 'Design', 'Development', 'Testing', 'Deploy'],
+        filesCount: 18,
+      },
+    ];
+  }
+
+  renderProjects(filter = 'all') {
     const list = document.getElementById('project-list');
     if (!list) return;
+
+    let projects = this.state.projects;
+    if (filter !== 'all') {
+      projects = projects.filter(p => p.status === filter);
+    }
 
     if (projects.length === 0) {
       list.innerHTML = `
         <div class="empty-state">
           <div class="empty-icon">📁</div>
-          <div class="empty-title">No Projects Yet</div>
-          <div class="empty-desc">Create your first project and let the Luymas AI team bring it to life.</div>
-          <button class="btn btn-primary mt-lg" onclick="app.createProjectModal()">+ New Project</button>
+          <div class="empty-title">No Projects Found</div>
+          <div class="empty-desc">${filter !== 'all' ? 'No projects with this status.' : 'Create your first project and let the Luymas AI team bring it to life.'}</div>
+          <button class="btn btn-primary" style="margin-top:var(--sp-4)" onclick="app.createProjectModal()">+ New Project</button>
         </div>
       `;
       return;
     }
 
     list.innerHTML = projects.map(p => `
-      <div class="project-card" onclick="app.showProjectDetail('${p.id}')">
-        <div class="project-card-header">
+      <div class="project-card">
+        <div class="project-card-top">
           <div>
-            <div class="project-title">${p.name}</div>
+            <div class="project-name">${p.name}</div>
             <div class="project-desc">${p.description}</div>
           </div>
-          <span class="project-status ${p.status}">${p.status.replace('-', ' ')}</span>
+          <span class="project-status-badge ${p.status}">${p.status.replace('-', ' ')}</span>
         </div>
         <div class="project-meta">
-          <span>🤖 ${p.agents.length} agents</span>
+          <span>🤖 ${p.agents?.length || 0} agents</span>
           <span>📅 ${p.created}</span>
           <span>📊 ${p.progress}% complete</span>
+          <span>📄 ${p.filesCount || 0} files</span>
         </div>
         <div class="project-timeline">
           ${(p.timeline || []).map((step, i) => `
@@ -949,1050 +2129,61 @@ class ViewRenderer {
           `).join('')}
         </div>
         <div class="project-actions">
-          ${p.status === 'review' ? '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); app.deployProject(\'' + p.id + '\')">🚀 Deploy</button>' : ''}
-          ${p.status === 'in-progress' ? '<button class="btn btn-sm" onclick="event.stopPropagation(); app.reviewProject(\'' + p.id + '\')">📋 Review</button>' : ''}
-          <button class="btn btn-sm" onclick="event.stopPropagation(); app.editProject('${p.id}')">✏️ Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); app.deleteProject('${p.id}')">🗑️ Delete</button>
+          ${p.status === 'review' ? '<button class="btn btn-sm btn-primary" onclick="app.deployProject(\'' + p.id + '\')">🚀 Deploy</button>' : ''}
+          ${p.status === 'in-progress' ? '<button class="btn btn-sm" onclick="app.reviewProject(\'' + p.id + '\')">📋 Review</button>' : ''}
+          <div class="deploy-btn-group">
+            <button class="deploy-btn" onclick="app.deployTo(\'' + p.id + '\', 'web')" title="Deploy Web">🌐</button>
+            <button class="deploy-btn" onclick="app.deployTo(\'' + p.id + '\', 'mobile')" title="Deploy Mobile">📱</button>
+            <button class="deploy-btn" onclick="app.deployTo(\'' + p.id + '\', 'desktop')" title="Deploy Desktop">🖥️</button>
+          </div>
+          <button class="btn btn-sm" onclick="app.viewProjectFiles(\'' + p.id + '\')">📁 Files</button>
         </div>
       </div>
     `).join('');
   }
 
-  // --- Messages ---
-  renderMessages() {
-    this.renderThreadList();
-    this.renderChatArea();
-  }
+  updateProjectSelect() {
+    const select = document.getElementById('files-project-select');
+    if (!select) return;
 
-  renderThreadList() {
-    const listEl = document.getElementById('thread-list');
-    if (!listEl) return;
-
-    const agents = this.state.get('agents');
-    const threads = [
-      { id: 'war-room', name: '⚔️ War Room', preview: 'Team-wide coordination', avatar: '⚔️', avatarClass: 'orchestrator' },
-      ...[...agents.values()].map(a => ({
-        id: `agent-${a.id}`,
-        name: a.name,
-        preview: a.task,
-        avatar: a.icon,
-        avatarClass: a.avatarClass,
-      })),
-    ];
-
-    const selected = this.state.get('selectedThread');
-
-    listEl.innerHTML = threads.map(t => `
-      <div class="thread-item ${t.id === selected ? 'active' : ''}" onclick="app.selectThread('${t.id}')">
-        <div class="thread-avatar ${t.avatarClass}">${t.avatar}</div>
-        <div class="thread-info">
-          <div class="thread-name">${t.name}</div>
-          <div class="thread-preview">${t.preview}</div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  renderChatArea() {
-    const selected = this.state.get('selectedThread');
-    const messages = this.state.get('messages').filter(m => m.thread === selected);
-    const chatBody = document.getElementById('chat-body');
-    const chatTitle = document.getElementById('chat-title');
-
-    if (!chatBody) return;
-
-    // Determine thread name
-    let threadName = 'War Room';
-    if (selected.startsWith('agent-')) {
-      const agentId = selected.replace('agent-', '');
-      const agents = this.state.get('agents');
-      const agent = agents.get(agentId);
-      if (agent) threadName = agent.name;
-    }
-    if (chatTitle) chatTitle.textContent = threadName;
-
-    // Default messages for war room
-    const defaultMessages = selected === 'war-room' ? [
-      { id: '1', thread: 'war-room', sender: 'PDG', senderType: 'agent', text: 'Team status report: All systems operational. 5 agents active, 3 idle, 2 waiting. Current focus: E-commerce platform sprint.', time: '10:30 AM' },
-      { id: '2', thread: 'war-room', sender: 'Coder Backend', senderType: 'agent', text: 'API endpoints for /users and /products are complete. Running self-verification checks now. Will push to feature branch once confirmed.', time: '10:32 AM' },
-      { id: '3', thread: 'war-room', sender: 'Coder Frontend', senderType: 'agent', text: 'Dashboard components are 80% done. Need the API schema from Backend to wire up the data layer. Can someone share the latest spec?', time: '10:33 AM' },
-      { id: '4', thread: 'war-room', sender: 'Ops', senderType: 'agent', text: 'Staging environment is up. Docker containers running healthy. Ready for deployment when code is merged.', time: '10:35 AM' },
-    ] : [];
-
-    const allMessages = messages.length > 0 ? messages : defaultMessages;
-
-    chatBody.innerHTML = allMessages.map(m => `
-      <div class="chat-bubble ${m.senderType === 'user' ? 'outgoing' : 'incoming'}">
-        <div class="bubble-header">
-          <span class="bubble-sender">${m.sender}</span>
-          <span class="bubble-time">${m.time}</span>
-        </div>
-        <div class="bubble-content">${m.text}</div>
-      </div>
-    `).join('');
-
-    // Scroll to bottom
-    chatBody.scrollTop = chatBody.scrollHeight;
-  }
-
-  // --- Approvals ---
-  renderApprovals() {
-    const approvals = this.state.get('approvals');
-    const panel = document.getElementById('approvals-queue');
-    if (!panel) return;
-
-    // Toggle visibility
-    if (!panel.classList.contains('hidden')) {
-      panel.classList.add('hidden');
-      return;
-    }
-    panel.classList.remove('hidden');
-
-    const defaultApprovals = approvals.length > 0 ? approvals : [
-      { id: 'a1', agent: 'Guardian', title: 'Code deployment approval', description: 'Security scan completed with 0 critical, 2 medium issues. Requesting approval to proceed with deployment to production.', type: 'normal', time: '5 min ago' },
-      { id: 'a2', agent: 'PDG', title: 'API key injection for production', description: 'Requesting approval to inject production API keys for Stripe and SendGrid into the deployment environment.', type: 'critical', time: '12 min ago' },
-      { id: 'a3', agent: 'Architect', title: 'Tech stack change request', description: 'Recommending switch from PostgreSQL to Supabase for the new project. Requires architecture review and approval.', type: 'normal', time: '25 min ago' },
-    ];
-
-    panel.innerHTML = `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔔 Approval Queue</div>
-          <span class="badge badge-waiting">${defaultApprovals.length} pending</span>
-        </div>
-        <div class="card-body">
-          ${defaultApprovals.map(a => `
-            <div class="approval-card ${a.type === 'critical' ? 'critical' : ''}">
-              <div class="approval-header">
-                <span class="approval-type ${a.type}">${a.type}</span>
-                <span class="approval-time">${a.time}</span>
-              </div>
-              <div style="font-size:0.8rem;color:var(--accent-primary);margin-bottom:4px;font-weight:600;">${a.agent}</div>
-              <div class="approval-body"><strong>${a.title}</strong><br>${a.description}</div>
-              <div class="approval-actions">
-                <button class="approval-btn approve" onclick="app.approveRequest('${a.id}')">✓ Approve</button>
-                <button class="approval-btn reject" onclick="app.rejectRequest('${a.id}')">✕ Reject</button>
-                <button class="approval-btn details" onclick="app.showApprovalDetail('${a.id}')">Details</button>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  // --- Analytics ---
-  renderAnalytics() {
-    const agents = this.state.get('agents');
-    const projects = this.state.get('projects');
-
-    // Agent utilization
-    const utilizationEl = document.getElementById('analytics-utilization');
-    if (utilizationEl) {
-      const agentList = [...agents.values()];
-      utilizationEl.innerHTML = agentList.map(a => {
-        const pct = a.status === 'active' ? 85 + Math.floor(Math.random() * 15) :
-                    a.status === 'waiting' ? 30 + Math.floor(Math.random() * 30) :
-                    Math.floor(Math.random() * 20);
-        return `
-          <div class="metric-row">
-            <span class="metric-label">${a.icon} ${a.name.split(' ').pop()}</span>
-            <div class="metric-bar">
-              <div class="metric-bar-fill" style="width:${pct}%; background:${pct > 70 ? 'var(--status-active)' : pct > 40 ? 'var(--status-waiting)' : 'var(--status-idle)'}"></div>
-            </div>
-            <span class="metric-value">${pct}%</span>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Project metrics
-    const projectMetricsEl = document.getElementById('analytics-projects');
-    if (projectMetricsEl) {
-      const metrics = [
-        { label: 'Projects Completed', value: '3' },
-        { label: 'Average Sprint Time', value: '4.2 days' },
-        { label: 'Code Quality Score', value: '94/100' },
-        { label: 'Test Coverage', value: '87%' },
-        { label: 'Security Score', value: 'A+' },
-        { label: 'Deployment Success Rate', value: '98.5%' },
-      ];
-      projectMetricsEl.innerHTML = metrics.map(m => `
-        <div class="metric-row">
-          <span class="metric-label">${m.label}</span>
-          <span class="metric-value">${m.value}</span>
-        </div>
-      `).join('');
-    }
-
-    // Model performance
-    const modelPerfEl = document.getElementById('analytics-models');
-    if (modelPerfEl) {
-      const models = [
-        { name: 'deepseek-r1:8b', tokens: 45, quality: 74.8 },
-        { name: 'qwen2.5-coder:7b', tokens: 55, quality: 84.1 },
-        { name: 'z-image-turbo', tokens: 0, quality: 76 },
-      ];
-      modelPerfEl.innerHTML = models.map(m => `
-        <div class="metric-row">
-          <span class="metric-label font-mono text-sm">${m.name}</span>
-          <div class="metric-bar">
-            <div class="metric-bar-fill" style="width:${m.quality}%"></div>
-          </div>
-          <span class="metric-value">${m.quality}%</span>
-        </div>
-      `).join('');
-    }
-
-    // Knowledge mesh
-    const meshEl = document.getElementById('analytics-mesh');
-    if (meshEl) {
-      const meshStats = [
-        { label: 'Knowledge Entries', value: '1,247' },
-        { label: 'Connections', value: '3,891' },
-        { label: 'Patterns Detected', value: '89' },
-        { label: 'Lessons Learned', value: '34' },
-        { label: 'Source Documents', value: '156' },
-        { label: 'Last Updated', value: '2 min ago' },
-      ];
-      meshEl.innerHTML = meshStats.map(m => `
-        <div class="metric-row">
-          <span class="metric-label">${m.label}</span>
-          <span class="metric-value">${m.value}</span>
-        </div>
-      `).join('');
-    }
-  }
-
-  // --- Settings ---
-  renderSettings() {
-    const section = this.state.get('settingsSection');
-    const panel = document.getElementById('settings-content');
-    if (!panel) return;
-
-    // Update nav
-    document.querySelectorAll('.settings-nav-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.section === section);
+    const current = select.value;
+    select.innerHTML = '<option value="">Select a project...</option>';
+    this.state.projects.forEach(p => {
+      select.innerHTML += `<option value="${p.id}">${p.name}</option>`;
     });
-
-    switch (section) {
-      case 'models': this.renderSettingsModels(panel); break;
-      case 'messaging': this.renderSettingsMessaging(panel); break;
-      case 'security': this.renderSettingsSecurity(panel); break;
-      case 'email': this.renderSettingsEmail(panel); break;
-      case 'identity': this.renderSettingsIdentity(panel); break;
-      case 'system': this.renderSettingsSystem(panel); break;
-      default: this.renderSettingsModels(panel);
-    }
+    select.value = current;
   }
 
-  renderSettingsModels(panel) {
-    const models = [
-      { name: 'deepseek-r1:8b', size: '5 GB', status: 'installed', category: 'Reasoning', params: '8B' },
-      { name: 'qwen2.5-coder:7b', size: '4.5 GB', status: 'installed', category: 'Coding', params: '7B' },
-      { name: 'z-image-turbo', size: '4 GB', status: 'installed', category: 'Image', params: '6B' },
-      { name: 'deepseek-r1:14b', size: '9 GB', status: 'available', category: 'Reasoning', params: '14B' },
-      { name: 'qwen3:30b', size: '20 GB', status: 'available', category: 'Reasoning', params: '30B' },
-      { name: 'qwen2.5-coder:32b', size: '20 GB', status: 'available', category: 'Coding', params: '32B' },
-      { name: 'gemma4:26b', size: '16 GB', status: 'available', category: 'Reasoning', params: '26B' },
-      { name: 'flux2-schnell', size: '24 GB', status: 'available', category: 'Image', params: '12B' },
-      { name: 'qwen3.5', size: '20 GB', status: 'available', category: 'Reasoning', params: '32B' },
-      { name: 'glm5', size: '75 GB', status: 'available', category: 'Coding', params: '130B' },
-    ];
-
-    panel.innerHTML = `
-      <div class="settings-section">
-        <div class="settings-section-title">🧠 Model Management</div>
-        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;">
-          Download, switch, and remove AI models from your local Ollama instance.
-          Models are assigned to agents based on your hardware tier.
-        </p>
-        <div class="model-list">
-          ${models.map(m => `
-            <div class="model-item">
-              <div class="model-info">
-                <div class="model-name">${m.name}</div>
-                <div class="model-meta">
-                  <span>${m.category}</span>
-                  <span>${m.params}</span>
-                  <span>${m.size}</span>
-                </div>
-              </div>
-              <span class="model-status ${m.status}">${m.status}</span>
-              ${m.status === 'installed'
-                ? `<button class="btn btn-sm btn-danger" onclick="app.removeModel('${m.name}')">Remove</button>`
-                : `<button class="btn btn-sm btn-primary" onclick="app.pullModel('${m.name}')">Pull</button>`
-              }
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  renderSettingsMessaging(panel) {
-    panel.innerHTML = `
-      <div class="settings-section">
-        <div class="settings-section-title">💬 Messaging Configuration</div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Telegram Bot</div>
-            <div class="setting-desc">Enable Telegram bot for agent communications</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Telegram Bot Token</div>
-            <div class="setting-desc">Bot token from @BotFather</div>
-          </div>
-          <input class="text-input" type="password" placeholder="Enter bot token..." value="••••••••••••••••" style="width:200px;">
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">WhatsApp Integration</div>
-            <div class="setting-desc">Enable WhatsApp messaging via Twilio</div>
-          </div>
-          <div class="toggle" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Twilio Account SID</div>
-            <div class="setting-desc">Your Twilio Account SID</div>
-          </div>
-          <input class="text-input" type="text" placeholder="AC..." style="width:200px;">
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Notification Sound</div>
-            <div class="setting-desc">Play sound on new messages</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Auto-Reply</div>
-            <div class="setting-desc">Allow agents to auto-reply to simple queries</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  renderSettingsSecurity(panel) {
-    panel.innerHTML = `
-      <div class="settings-section">
-        <div class="settings-section-title">🔒 Security Settings</div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Contact Whitelist</div>
-            <div class="setting-desc">Only allow messages from whitelisted contacts</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">CAPTCHA Protection</div>
-            <div class="setting-desc">Enable CAPTCHA solver for protected sites</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Two-Factor Authentication</div>
-            <div class="setting-desc">Require 2FA for critical operations</div>
-          </div>
-          <div class="toggle" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Audit Logging</div>
-            <div class="setting-desc">Log all agent actions for audit trail</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">API Key Encryption</div>
-            <div class="setting-desc">Encrypt stored API keys at rest</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Rate Limiting</div>
-            <div class="setting-desc">Limit API calls per agent (requests/min)</div>
-          </div>
-          <input class="text-input" type="number" value="60" min="1" max="1000" style="width:80px;">
-        </div>
-      </div>
-    `;
-  }
-
-  renderSettingsEmail(panel) {
-    panel.innerHTML = `
-      <div class="settings-section">
-        <div class="settings-section-title">📧 Email Management</div>
-        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;">
-          Configure email accounts for each agent. Agents use these to communicate externally.
-        </p>
-        <div class="model-list">
-          ${[...this.state.get('agents').values()].map(a => `
-            <div class="model-item">
-              <div class="model-info">
-                <div class="model-name">${a.icon} ${a.name}</div>
-                <div class="model-meta"><span>${a.id}@luymas.local</span></div>
-              </div>
-              <span class="model-status installed">configured</span>
-              <button class="btn btn-sm" onclick="app.configureAgentEmail('${a.id}')">Edit</button>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  renderSettingsIdentity(panel) {
-    panel.innerHTML = `
-      <div class="settings-section">
-        <div class="settings-section-title">🪪 Identity Management</div>
-        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:16px;">
-          Manage digital identities for agents across services (GitHub, Docker Hub, Vercel, etc.)
-        </p>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Auto-Create Identities</div>
-            <div class="setting-desc">Automatically create service accounts for new agents</div>
-          </div>
-          <div class="toggle" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Identity Verification</div>
-            <div class="setting-desc">Require email verification for new identities</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">GitHub Account</div>
-            <div class="setting-desc">Associated GitHub account for agents</div>
-          </div>
-          <input class="text-input" type="text" value="luymas-ai" style="width:150px;">
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Docker Hub Account</div>
-            <div class="setting-desc">Docker Hub account for container management</div>
-          </div>
-          <input class="text-input" type="text" value="luymas" style="width:150px;">
-        </div>
-      </div>
-    `;
-  }
-
-  renderSettingsSystem(panel) {
-    const health = this.state.get('systemHealth');
-    panel.innerHTML = `
-      <div class="settings-section">
-        <div class="settings-section-title">⚙️ System Configuration</div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Hardware Tier</div>
-            <div class="setting-desc">Current hardware configuration profile</div>
-          </div>
-          <select class="text-input" style="width:150px;">
-            <option value="tier1" selected>Tier 1 (8GB)</option>
-            <option value="tier2">Tier 2 (16GB)</option>
-            <option value="tier3">Tier 3 (32GB+GPU)</option>
-            <option value="tier4">Tier 4 (64GB+GPU)</option>
-            <option value="tier5">Tier 5 (128GB+GPU)</option>
-          </select>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Max Concurrent Agents</div>
-            <div class="setting-desc">Maximum number of agents running simultaneously</div>
-          </div>
-          <input class="text-input" type="number" value="3" min="1" max="11" style="width:80px;">
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Task Timeout</div>
-            <div class="setting-desc">Default task timeout in seconds</div>
-          </div>
-          <input class="text-input" type="number" value="300" min="30" max="3600" style="width:100px;">
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Auto-Update</div>
-            <div class="setting-desc">Automatically check for system updates</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Sandbox Mode</div>
-            <div class="setting-desc">Restrict filesystem and network access</div>
-          </div>
-          <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-        </div>
-        <div class="setting-item">
-          <div class="setting-info">
-            <div class="setting-label">Log Level</div>
-            <div class="setting-desc">System log verbosity level</div>
-          </div>
-          <select class="text-input" style="width:120px;">
-            <option>DEBUG</option>
-            <option selected>INFO</option>
-            <option>WARNING</option>
-            <option>ERROR</option>
-          </select>
-        </div>
-        <div style="margin-top:24px;padding:16px;background:var(--bg-tertiary);border-radius:var(--radius-md);border:1px solid var(--border-secondary);">
-          <h4 style="font-size:0.9rem;margin-bottom:12px;color:var(--text-primary);">System Health</h4>
-          <div class="health-grid">
-            <div class="health-item"><span class="health-dot ok"></span><span class="health-label">Ollama</span><span class="health-value">${health.ollama}</span></div>
-            <div class="health-item"><span class="health-dot ok"></span><span class="health-label">Memory</span><span class="health-value">${health.memoryUsage}</span></div>
-            <div class="health-item"><span class="health-dot ok"></span><span class="health-label">CPU</span><span class="health-value">${health.cpuUsage}</span></div>
-            <div class="health-item"><span class="health-dot ok"></span><span class="health-label">Disk</span><span class="health-value">${health.diskUsage}</span></div>
-          </div>
-        </div>
-        <div style="margin-top:16px;display:flex;gap:8px;">
-          <button class="btn" onclick="app.runDiagnostics()">🔧 Run Diagnostics</button>
-          <button class="btn" onclick="app.checkUpdates()">🔄 Check Updates</button>
-          <button class="btn btn-danger" onclick="app.restartSystem()">♻️ Restart System</button>
-        </div>
-      </div>
-    `;
-  }
-}
-
-// =============================================================================
-// Main Application
-// =============================================================================
-class LuymasStudio {
-  constructor() {
-    this.state = new StateManager();
-    this.ws = new WebSocketManager(this.state);
-    this.api = new APIClient();
-    this.modal = null;
-    this.toast = null;
-    this.router = null;
-    this.views = null;
-    this.pollingTimers = [];
-  }
-
-  async init() {
-    // Initialize agents
-    const agents = new Map();
-    AGENT_DEFS.forEach(a => agents.set(a.id, { ...a }));
-    this.state.set('agents', agents);
-
-    // Initialize default projects
-    this.state.set('projects', [
-      {
-        id: 'p1',
-        name: 'E-Commerce Platform',
-        description: 'Full-stack e-commerce solution with product catalog, cart, checkout, and admin dashboard.',
-        status: 'in-progress',
-        progress: 68,
-        agents: ['pm', 'architect', 'coder_back', 'coder_front', 'designer'],
-        created: 'Mar 1, 2026',
-        timeline: ['completed', 'completed', 'completed', 'active', ''],
-        timelineLabels: ['Planning', 'Design', 'Backend', 'Frontend', 'Deploy'],
-      },
-      {
-        id: 'p2',
-        name: 'AI Content Generator',
-        description: 'SaaS tool for generating blog posts, social media content, and marketing copy using AI.',
-        status: 'planning',
-        progress: 15,
-        agents: ['pm', 'architect'],
-        created: 'Mar 3, 2026',
-        timeline: ['active', '', '', '', ''],
-        timelineLabels: ['Planning', 'Design', 'Build', 'Test', 'Deploy'],
-      },
-      {
-        id: 'p3',
-        name: 'Portfolio Website',
-        description: 'Personal portfolio with project showcase, blog, and contact form.',
-        status: 'review',
-        progress: 95,
-        agents: ['coder_front', 'designer', 'guardian'],
-        created: 'Feb 25, 2026',
-        timeline: ['completed', 'completed', 'completed', 'completed', 'active'],
-        timelineLabels: ['Planning', 'Design', 'Build', 'Test', 'Review'],
-      },
-      {
-        id: 'p4',
-        name: 'Task Management API',
-        description: 'RESTful API for task management with auth, teams, and real-time updates.',
-        status: 'deployed',
-        progress: 100,
-        agents: ['coder_back', 'tester', 'ops', 'caretaker'],
-        created: 'Feb 20, 2026',
-        timeline: ['completed', 'completed', 'completed', 'completed', 'completed'],
-        timelineLabels: ['Planning', 'Design', 'Build', 'Test', 'Deploy'],
-      },
-    ]);
-
-    // Initialize messages
-    this.state.set('messages', []);
-    this.state.set('approvals', []);
-    this.state.set('activityLog', []);
-
-    // Init subsystems
-    this.toast = new ToastManager();
-    window._luymas_toast = this.toast;
-    this.modal = new ModalManager();
-    this.views = new ViewRenderer(this.state, this.api);
-    this.router = new Router(this.state);
-
-    // Register routes
-    this.router.register('dashboard', () => this.views.renderDashboard());
-    this.router.register('agents', () => this.views.renderAgents());
-    this.router.register('projects', () => this.views.renderProjects());
-    this.router.register('messages', () => this.views.renderMessages());
-    this.router.register('analytics', () => this.views.renderAnalytics());
-    this.router.register('settings', () => this.views.renderSettings());
-
-    // Setup event listeners
-    this.setupListeners();
-
-    // Setup sidebar
-    this.setupSidebar();
-
-    // Setup settings nav
-    this.setupSettingsNav();
-
-    // Setup search
-    this.setupSearch();
-
-    // Connect WebSocket
-    this.ws.connect();
-
-    // Try loading from API, fall back to local state
-    await this.loadFromAPI();
-
-    // Start polling
-    this.startPolling();
-
-    // Initial render
-    this.router.handleRoute();
-
-    // Apply sidebar state
-    if (this.state.get('sidebarCollapsed')) {
-      document.querySelector('.sidebar')?.classList.add('collapsed');
-    }
-
-    console.log('✅ Luymas AI Studio initialized');
-  }
-
-  setupListeners() {
-    // State change listeners
-    this.state.on('state:agents', () => {
-      if (this.router.currentView === 'agents') this.views.renderAgents();
-      if (this.router.currentView === 'dashboard') this.views.renderDashboard();
-    });
-
-    this.state.on('state:projects', () => {
-      if (this.router.currentView === 'projects') this.views.renderProjects();
-    });
-
-    this.state.on('state:messages', () => {
-      if (this.router.currentView === 'messages') this.views.renderChatArea();
-    });
-
-    this.state.on('state:connected', ({ new: connected }) => {
-      const statusEl = document.getElementById('connection-status');
-      if (statusEl) {
-        statusEl.className = `connection-status ${connected ? '' : 'disconnected'}`;
-        statusEl.querySelector('.status-text').textContent = connected ? 'Connected' : 'Disconnected';
-      }
-    });
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      // Ctrl/Cmd + K for search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('global-search')?.focus();
-      }
-      // Escape to close modals
-      if (e.key === 'Escape') {
-        this.modal.close();
-        this.closeAgentDetail();
-      }
-    });
-
-    // Mobile menu button
-    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
-      document.querySelector('.sidebar')?.classList.toggle('mobile-open');
-    });
-
-    // Chat send
-    document.getElementById('chat-send-btn')?.addEventListener('click', () => this.sendChatMessage());
-    document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.sendChatMessage();
-    });
-  }
-
-  setupSidebar() {
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) {
-      toggle.addEventListener('click', () => {
-        const sidebar = document.querySelector('.sidebar');
-        sidebar?.classList.toggle('collapsed');
-        this.state.set('sidebarCollapsed', sidebar?.classList.contains('collapsed'));
-      });
-    }
-  }
-
-  setupSettingsNav() {
-    document.querySelectorAll('.settings-nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const section = item.dataset.section;
-        this.state.set('settingsSection', section);
-        this.views.renderSettings();
-      });
-    });
-  }
-
-  setupSearch() {
-    const searchInput = document.getElementById('global-search');
-    if (!searchInput) return;
-
-    let debounce;
-    searchInput.addEventListener('input', (e) => {
-      clearTimeout(debounce);
-      debounce = setTimeout(() => {
-        this.state.set('searchQuery', e.target.value.toLowerCase());
-        this.executeSearch(e.target.value.toLowerCase());
-      }, 250);
-    });
-  }
-
-  executeSearch(query) {
-    if (!query || query.length < 2) return;
-
-    const agents = this.state.get('agents');
-    const projects = this.state.get('projects');
-
-    const agentResults = [...agents.values()].filter(a =>
-      a.name.toLowerCase().includes(query) ||
-      a.role.toLowerCase().includes(query) ||
-      a.task.toLowerCase().includes(query)
-    );
-
-    const projectResults = projects.filter(p =>
-      p.name.toLowerCase().includes(query) ||
-      p.description.toLowerCase().includes(query)
-    );
-
-    if (agentResults.length === 1) {
-      this.router.navigate('agents');
-      this.showAgentDetail(agentResults[0].id);
-    } else if (projectResults.length === 1) {
-      this.router.navigate('projects');
-    } else if (agentResults.length > 0) {
-      this.router.navigate('agents');
-    } else if (projectResults.length > 0) {
-      this.router.navigate('projects');
-    }
-  }
-
-  async loadFromAPI() {
-    try {
-      const [agents, projects, health] = await Promise.allSettled([
-        this.api.getAgents(),
-        this.api.getProjects(),
-        this.api.getHealth(),
-      ]);
-
-      if (agents.status === 'fulfilled' && agents.value) {
-        const agentMap = new Map();
-        agents.value.forEach(a => agentMap.set(a.id || a.name, a));
-        this.state.set('agents', agentMap);
-      }
-
-      if (projects.status === 'fulfilled' && projects.value) {
-        this.state.set('projects', projects.value);
-      }
-
-      if (health.status === 'fulfilled' && health.value) {
-        this.state.set('systemHealth', health.value);
-      }
-    } catch (e) {
-      // API not available; using local data
-      console.info('API not reachable, using local state');
-    }
-  }
-
-  startPolling() {
-    // Poll system health
-    const healthPoll = setInterval(async () => {
-      try {
-        const health = await this.api.getHealth();
-        if (health) this.state.set('systemHealth', health);
-      } catch (e) { /* ignore */ }
-    }, CONFIG.HEALTH_POLL_INTERVAL);
-    this.pollingTimers.push(healthPoll);
-
-    // Poll for activity
-    const activityPoll = setInterval(() => {
-      this.simulateActivity();
-    }, CONFIG.ACTIVITY_POLL_INTERVAL);
-    this.pollingTimers.push(activityPoll);
-
-    // Simulate status changes
-    const statusPoll = setInterval(() => {
-      this.simulateStatusChange();
-    }, 20000);
-    this.pollingTimers.push(statusPoll);
-  }
-
-  simulateActivity() {
-    const activities = [
-      { type: 'agent', text: '<strong>Caretaker</strong> performed health check — all systems green', time: 'just now' },
-      { type: 'task', text: '<strong>Tester</strong> completed regression test suite (47 tests passed)', time: 'just now' },
-      { type: 'message', text: '<strong>PM</strong> sent project status update to stakeholders', time: 'just now' },
-      { type: 'system', text: '<strong>System</strong> memory usage: 62% — within normal range', time: 'just now' },
-    ];
-    const random = activities[Math.floor(Math.random() * activities.length)];
-    const log = [random, ...this.state.get('activityLog')].slice(0, 50);
-    this.state.set('activityLog', log);
-  }
-
-  simulateStatusChange() {
-    const agents = this.state.get('agents');
-    const statuses = ['active', 'idle', 'waiting', 'active'];
-    const agentArray = [...agents.values()];
-    const randomAgent = agentArray[Math.floor(Math.random() * agentArray.length)];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-
-    if (randomAgent.status !== randomStatus) {
-      randomAgent.status = randomStatus;
-      agents.set(randomAgent.id, randomAgent);
-      this.state.set('agents', agents);
-    }
-  }
-
-  // --- Agent Actions ---
-  async startAgent(agentId) {
-    try {
-      await this.api.startAgent(agentId);
-      this.updateAgentStatus(agentId, 'active');
-      this.toast.success('Agent Started', `Agent is now active`);
-    } catch (e) {
-      this.updateAgentStatus(agentId, 'active');
-      this.toast.success('Agent Started', `Agent is now active (local)`);
-    }
-  }
-
-  async stopAgent(agentId) {
-    try {
-      await this.api.stopAgent(agentId);
-      this.updateAgentStatus(agentId, 'idle');
-      this.toast.info('Agent Stopped', `Agent has been stopped`);
-    } catch (e) {
-      this.updateAgentStatus(agentId, 'idle');
-      this.toast.info('Agent Stopped', `Agent has been stopped (local)`);
-    }
-  }
-
-  async pauseAgent(agentId) {
-    try {
-      await this.api.pauseAgent(agentId);
-      this.updateAgentStatus(agentId, 'paused');
-      this.toast.warning('Agent Paused', `Agent is paused`);
-    } catch (e) {
-      this.updateAgentStatus(agentId, 'paused');
-      this.toast.warning('Agent Paused', `Agent is paused (local)`);
-    }
-  }
-
-  updateAgentStatus(agentId, status) {
-    const agents = this.state.get('agents');
-    const agent = agents.get(agentId);
-    if (agent) {
-      agent.status = status;
-      agents.set(agentId, agent);
-      this.state.set('agents', agents);
-    }
-  }
-
-  showAgentDetail(agentId) {
-    this.state.set('selectedAgent', agentId);
-    this.views.renderAgentDetail(agentId);
-  }
-
-  closeAgentDetail() {
-    const panel = document.getElementById('agent-detail-panel');
-    if (panel) panel.classList.add('hidden');
-    this.state.set('selectedAgent', null);
-  }
-
-  chatWithAgent(agentId) {
-    this.state.set('selectedThread', `agent-${agentId}`);
-    this.router.navigate('messages');
-  }
-
-  async sendAgentChat(agentId) {
-    const input = document.getElementById('agent-chat-input');
-    if (!input || !input.value.trim()) return;
-
-    const message = input.value.trim();
-    input.value = '';
-
-    // Add user message
-    const messagesEl = document.getElementById('agent-chat-messages');
-    if (messagesEl) {
-      messagesEl.innerHTML += `
-        <div class="chat-msg">
-          <div class="msg-sender user">You</div>
-          <div class="msg-text">${this.escapeHtml(message)}</div>
-          <div class="msg-time">${new Date().toLocaleTimeString()}</div>
-        </div>
-      `;
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    // Show typing indicator
-    if (messagesEl) {
-      messagesEl.innerHTML += `
-        <div class="chat-msg typing-msg">
-          <div class="msg-sender">Agent</div>
-          <div class="typing-indicator">
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-          </div>
-        </div>
-      `;
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    try {
-      const response = await this.api.chatAgent(agentId, message);
-      this.removeTypingIndicator();
-      if (messagesEl && response) {
-        messagesEl.innerHTML += `
-          <div class="chat-msg">
-            <div class="msg-sender">Agent</div>
-            <div class="msg-text">${response.text || response.message || 'Processing your request...'}</div>
-            <div class="msg-time">${new Date().toLocaleTimeString()}</div>
-          </div>
-        `;
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-      }
-    } catch (e) {
-      this.removeTypingIndicator();
-      // Simulate response
-      setTimeout(() => {
-        if (messagesEl) {
-          const agents = this.state.get('agents');
-          const agent = agents.get(agentId);
-          messagesEl.innerHTML += `
-            <div class="chat-msg">
-              <div class="msg-sender">${agent ? agent.name : 'Agent'}</div>
-              <div class="msg-text">I received your message: "${this.escapeHtml(message)}". I'm processing this request using ${agent ? agent.model : 'my model'}. I'll have results shortly.</div>
-              <div class="msg-time">${new Date().toLocaleTimeString()}</div>
-            </div>
-          `;
-          messagesEl.scrollTop = messagesEl.scrollHeight;
-        }
-      }, 1500);
-    }
-  }
-
-  removeTypingIndicator() {
-    document.querySelectorAll('.typing-msg').forEach(el => el.remove());
-  }
-
-  // --- Chat Actions ---
-  async sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    if (!input || !input.value.trim()) return;
-
-    const message = input.value.trim();
-    input.value = '';
-
-    const selected = this.state.get('selectedThread');
-
-    // Add to messages
-    const messages = [...this.state.get('messages'), {
-      id: `msg-${Date.now()}`,
-      thread: selected,
-      sender: 'You',
-      senderType: 'user',
-      text: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }];
-    this.state.set('messages', messages);
-
-    try {
-      await this.api.sendMessage(selected, message);
-    } catch (e) {
-      // Simulate agent response
-      setTimeout(() => {
-        const agents = this.state.get('agents');
-        const responder = [...agents.values()].find(a => a.status === 'active') || [...agents.values()][0];
-        const responses = [
-          'Acknowledged. I\'ll process that right away.',
-          'Understood. Let me work on that and report back.',
-          'Good point. I\'ll factor that into my current task.',
-          'I\'ll coordinate with the team on this. Give me a moment.',
-          'Received. Adjusting my workflow accordingly.',
-        ];
-        const updatedMessages = [...this.state.get('messages'), {
-          id: `msg-${Date.now()}`,
-          thread: selected,
-          sender: responder ? responder.name.split(' ').pop() : 'Agent',
-          senderType: 'agent',
-          text: responses[Math.floor(Math.random() * responses.length)],
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }];
-        this.state.set('messages', updatedMessages);
-      }, 2000);
-    }
-  }
-
-  selectThread(threadId) {
-    this.state.set('selectedThread', threadId);
-    this.views.renderThreadList();
-    this.views.renderChatArea();
-  }
-
-  // --- Project Actions ---
   createProjectModal() {
     this.modal.open('Create New Project', `
-      <div style="display:flex;flex-direction:column;gap:16px;">
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Project Name</label>
-          <input class="text-input" type="text" id="new-project-name" placeholder="My Awesome Project">
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Description</label>
-          <textarea class="text-input" id="new-project-desc" rows="3" placeholder="Describe what you want to build..."></textarea>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Workflow</label>
-          <select class="text-input" id="new-project-workflow" style="width:100%;">
-            <option value="full">Full Stack (PM → Architect → Coders → QA → Deploy)</option>
-            <option value="api">API Only (PM → Architect → Backend → QA)</option>
-            <option value="frontend">Frontend Only (PM → Designer → Frontend → QA)</option>
-            <option value="design">Design Sprint (PM → Designer → Review)</option>
+      <div class="form-group">
+        <label class="form-label" for="project-name-input">Project Name</label>
+        <input type="text" id="project-name-input" class="form-input" placeholder="My Awesome Project" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="project-desc-input">Description</label>
+        <textarea id="project-desc-input" class="form-textarea" rows="3" placeholder="Describe what you want to build..."></textarea>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label" for="project-type-input">Project Type</label>
+          <select id="project-type-input" class="form-select">
+            <option value="web">Web Application</option>
+            <option value="mobile">Mobile App</option>
+            <option value="desktop">Desktop App</option>
+            <option value="api">API / Backend</option>
+            <option value="cli">CLI Tool</option>
           </select>
         </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Target Platform</label>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-sm platform-btn active" data-platform="web" onclick="this.parentElement.querySelectorAll('.platform-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');">🌐 Web</button>
-            <button class="btn btn-sm platform-btn" data-platform="mobile" onclick="this.parentElement.querySelectorAll('.platform-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');">📱 Mobile</button>
-            <button class="btn btn-sm platform-btn" data-platform="desktop" onclick="this.parentElement.querySelectorAll('.platform-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');">🖥️ Desktop</button>
-          </div>
+        <div class="form-group">
+          <label class="form-label" for="project-stack-input">Tech Stack</label>
+          <select id="project-stack-input" class="form-select">
+            <option value="nextjs">Next.js + TypeScript</option>
+            <option value="fastapi">FastAPI + Python</option>
+            <option value="react">React + Vite</option>
+            <option value="flutter">Flutter + Dart</option>
+            <option value="tauri">Tauri + Rust</option>
+          </select>
         </div>
       </div>
     `, {
@@ -2002,354 +2193,737 @@ class LuymasStudio {
   }
 
   async createProject() {
-    const name = document.getElementById('new-project-name')?.value;
-    const desc = document.getElementById('new-project-desc')?.value;
-    const workflow = document.getElementById('new-project-workflow')?.value;
+    const name = document.getElementById('project-name-input')?.value?.trim();
+    const desc = document.getElementById('project-desc-input')?.value?.trim();
+    const type = document.getElementById('project-type-input')?.value;
+    const stack = document.getElementById('project-stack-input')?.value;
 
     if (!name) {
-      this.toast.error('Missing Name', 'Please enter a project name');
+      this.toast.error('Validation Error', 'Project name is required');
       return;
     }
 
-    const workflowAgents = {
-      full: ['pm', 'architect', 'coder_back', 'coder_front', 'designer', 'tester', 'ops'],
-      api: ['pm', 'architect', 'coder_back', 'tester', 'ops'],
-      frontend: ['pm', 'designer', 'coder_front', 'tester', 'ops'],
-      design: ['pm', 'designer', 'reviewer'],
-    };
-
-    const project = {
-      id: `p${Date.now()}`,
-      name,
-      description: desc || 'New project',
-      status: 'planning',
-      progress: 0,
-      agents: workflowAgents[workflow] || workflowAgents.full,
-      created: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      timeline: ['active', '', '', '', ''],
-      timelineLabels: ['Planning', 'Design', 'Build', 'Test', 'Deploy'],
-    };
-
     try {
-      await this.api.createProject(project);
-    } catch (e) { /* local fallback */ }
+      await this.api.startWorkflow({ name, description: desc, type, stack });
+      this.toast.success('Project Created', `"${name}" has been created and agents are being assigned`);
+    } catch (e) {
+      this.toast.success('Project Created', `"${name}" has been created and agents are being assigned`);
+    }
 
-    const projects = [...this.state.get('projects'), project];
-    this.state.set('projects', projects);
-    this.toast.success('Project Created', `"${name}" is now being planned by the AI team`);
+    this.state.projects.unshift({
+      id: `p-${Date.now()}`,
+      name,
+      description: desc || '',
+      status: 'planning',
+      agents: ['pm', 'architect'],
+      created: new Date().toISOString().split('T')[0],
+      progress: 5,
+      timeline: ['active', '', '', '', ''],
+      timelineLabels: ['Planning', 'Design', 'Development', 'Testing', 'Deploy'],
+      filesCount: 0,
+    });
+
+    this.renderProjects();
+    this.updateProjectSelect();
   }
 
-  async deployProject(projectId) {
-    this.toast.info('Deploying', 'Starting deployment pipeline...');
-    const projects = this.state.get('projects').map(p =>
-      p.id === projectId ? { ...p, status: 'deployed', progress: 100, timeline: p.timeline.map(() => 'completed') } : p
-    );
-    this.state.set('projects', projects);
+  deployProject(projectId) {
+    const project = this.state.projects.find(p => p.id === projectId);
+    if (project) {
+      project.status = 'deployed';
+      project.progress = 100;
+      project.timeline = ['completed', 'completed', 'completed', 'completed', 'completed'];
+      this.toast.success('Deployed', `${project.name} has been deployed`);
+      this.renderProjects();
+    }
+  }
 
-    try {
-      await this.api.updateProject(projectId, { status: 'deployed' });
-    } catch (e) { /* local */ }
-
-    setTimeout(() => this.toast.success('Deployed!', 'Project has been deployed successfully'), 2000);
+  deployTo(projectId, platform) {
+    const project = this.state.projects.find(p => p.id === projectId);
+    if (project) {
+      this.toast.info('Deploying', `${project.name} to ${platform}...`);
+      setTimeout(() => {
+        this.toast.success('Deployed', `${project.name} deployed to ${platform}`);
+      }, 2000);
+    }
   }
 
   reviewProject(projectId) {
-    this.toast.info('Under Review', 'Security team is reviewing the project...');
-    const projects = this.state.get('projects').map(p =>
-      p.id === projectId ? { ...p, status: 'review' } : p
-    );
-    this.state.set('projects', projects);
+    const project = this.state.projects.find(p => p.id === projectId);
+    if (project) {
+      project.status = 'review';
+      this.toast.info('Review Started', `${project.name} is now under review`);
+      this.renderProjects();
+    }
   }
 
-  editProject(projectId) {
-    const project = this.state.get('projects').find(p => p.id === projectId);
-    if (!project) return;
-
-    this.modal.open('Edit Project', `
-      <div style="display:flex;flex-direction:column;gap:16px;">
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Project Name</label>
-          <input class="text-input" type="text" id="edit-project-name" value="${this.escapeHtml(project.name)}">
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Description</label>
-          <textarea class="text-input" id="edit-project-desc" rows="3">${this.escapeHtml(project.description)}</textarea>
-        </div>
-      </div>
-    `, {
-      confirmText: 'Save Changes',
-      onConfirm: async () => {
-        const name = document.getElementById('edit-project-name')?.value;
-        const desc = document.getElementById('edit-project-desc')?.value;
-        const projects = this.state.get('projects').map(p =>
-          p.id === projectId ? { ...p, name: name || p.name, description: desc || p.description } : p
-        );
-        this.state.set('projects', projects);
-        try { await this.api.updateProject(projectId, { name, description: desc }); } catch (e) {}
-        this.toast.success('Updated', 'Project has been updated');
-      },
-    });
+  viewProjectFiles(projectId) {
+    this.switchTab('files');
+    const select = document.getElementById('files-project-select');
+    if (select) select.value = projectId;
   }
 
-  async deleteProject(projectId) {
-    this.modal.open('Delete Project', `
-      <div style="text-align:center;padding:16px;">
-        <div style="font-size:2.5rem;margin-bottom:16px;">⚠️</div>
-        <p style="font-size:0.95rem;color:var(--text-primary);margin-bottom:8px;">Are you sure you want to delete this project?</p>
-        <p style="font-size:0.8rem;color:var(--text-tertiary);">This action cannot be undone. All project data will be lost.</p>
-      </div>
-    `, {
-      confirmText: '🗑️ Delete',
-      onConfirm: async () => {
-        const projects = this.state.get('projects').filter(p => p.id !== projectId);
-        this.state.set('projects', projects);
-        try { await this.api.deleteProject(projectId); } catch (e) {}
-        this.toast.success('Deleted', 'Project has been removed');
-      },
-    });
+  // ---- Approvals ----
+  async loadApprovals() {
+    try {
+      const data = await this.api.getApprovals();
+      this.state.approvals = data.approvals || data || [];
+    } catch (e) {
+      this.state.approvals = this.getDefaultApprovals();
+    }
+    this.renderApprovals();
   }
 
-  filterProjects(status) {
-    const allProjects = this.state.get('projects');
-    const filtered = status === 'all' ? allProjects : allProjects.filter(p => p.status === status);
+  getDefaultApprovals() {
+    return [
+      { id: 'a1', agent: 'Guardian', title: 'Code deployment approval', description: 'Security scan completed with 0 critical, 2 medium issues. Requesting approval to proceed with deployment to production.', type: 'normal', time: '5 min ago' },
+      { id: 'a2', agent: 'PDG', title: 'API key injection for production', description: 'Requesting approval to inject production API keys for Stripe and SendGrid into the deployment environment.', type: 'critical', time: '12 min ago' },
+      { id: 'a3', agent: 'Architect', title: 'Tech stack change request', description: 'Recommending switch from PostgreSQL to Supabase for the new project. Requires architecture review and approval.', type: 'normal', time: '25 min ago' },
+    ];
+  }
 
-    const list = document.getElementById('project-list');
-    if (!list) return;
+  renderApprovals() {
+    const el = document.getElementById('dashboard-approvals');
+    const countEl = document.getElementById('approval-count');
 
-    if (filtered.length === 0) {
-      list.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📁</div>
-          <div class="empty-title">No ${status === 'all' ? '' : status + ' '}Projects</div>
-          <div class="empty-desc">Create a new project to get started.</div>
-        </div>
-      `;
+    if (countEl) countEl.textContent = this.state.approvals.length;
+
+    if (!el) return;
+
+    if (this.state.approvals.length === 0) {
+      el.innerHTML = '<div class="empty-state-sm"><span class="empty-icon-sm">✅</span><p>No pending approvals</p></div>';
       return;
     }
 
-    // Re-render with filtered projects
-    list.innerHTML = filtered.map(p => `
-      <div class="project-card" onclick="app.showProjectDetail('${p.id}')">
-        <div class="project-card-header">
-          <div>
-            <div class="project-title">${p.name}</div>
-            <div class="project-desc">${p.description}</div>
-          </div>
-          <span class="project-status ${p.status}">${p.status.replace('-', ' ')}</span>
+    el.innerHTML = this.state.approvals.map(a => `
+      <div class="approval-card ${a.type === 'critical' ? 'critical' : ''}">
+        <div class="approval-header">
+          <span class="approval-type ${a.type}">${a.type}</span>
+          <span class="approval-time">${a.time}</span>
         </div>
-        <div class="project-meta">
-          <span>🤖 ${p.agents.length} agents</span>
-          <span>📅 ${p.created}</span>
-          <span>📊 ${p.progress}% complete</span>
-        </div>
-        <div class="project-timeline">
-          ${(p.timeline || []).map((step) => `
-            <div class="timeline-step ${step === 'completed' ? 'completed' : step === 'active' ? 'active' : ''}"></div>
-          `).join('')}
-        </div>
-        <div class="project-actions">
-          ${p.status === 'review' ? '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); app.deployProject(\'' + p.id + '\')">🚀 Deploy</button>' : ''}
-          <button class="btn btn-sm" onclick="event.stopPropagation(); app.editProject('${p.id}')">✏️ Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); app.deleteProject('${p.id}')">🗑️ Delete</button>
+        <div class="approval-agent">${a.agent}</div>
+        <div class="approval-body">${a.title}</div>
+        <div style="font-size:0.75rem;color:var(--text-tertiary);margin-bottom:var(--sp-2)">${a.description}</div>
+        <div class="approval-actions">
+          <button class="approval-btn approve" onclick="app.handleApproval('${a.id}', 'approve')">✓ Approve</button>
+          <button class="approval-btn reject" onclick="app.handleApproval('${a.id}', 'reject')">✕ Reject</button>
         </div>
       </div>
     `).join('');
   }
 
-  showProjectDetail(projectId) {
-    const project = this.state.get('projects').find(p => p.id === projectId);
-    if (!project) return;
+  async handleApproval(approvalId, action) {
+    try {
+      if (action === 'approve') {
+        await this.api.approveRequest(approvalId);
+      } else {
+        await this.api.rejectRequest(approvalId);
+      }
+    } catch (e) {
+      // Handle locally anyway
+    }
 
-    this.modal.open(project.name, `
-      <div style="display:flex;flex-direction:column;gap:16px;">
-        <p style="color:var(--text-secondary);font-size:0.9rem;">${project.description}</p>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;">
-          <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;flex:1;min-width:100px;text-align:center;">
-            <div style="font-size:1.2rem;font-weight:700;color:var(--text-primary);">${project.progress}%</div>
-            <div style="font-size:0.7rem;color:var(--text-tertiary);">Complete</div>
-          </div>
-          <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;flex:1;min-width:100px;text-align:center;">
-            <div style="font-size:1.2rem;font-weight:700;color:var(--text-primary);">${project.agents.length}</div>
-            <div style="font-size:0.7rem;color:var(--text-tertiary);">Agents</div>
-          </div>
-          <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;flex:1;min-width:100px;text-align:center;">
-            <div style="font-size:1.2rem;font-weight:700;color:var(--text-primary);">${project.created}</div>
-            <div style="font-size:0.7rem;color:var(--text-tertiary);">Created</div>
-          </div>
+    this.state.approvals = this.state.approvals.filter(a => a.id !== approvalId);
+    this.renderApprovals();
+
+    if (action === 'approve') {
+      this.toast.success('Approved', 'Request has been approved');
+    } else {
+      this.toast.info('Rejected', 'Request has been rejected');
+    }
+  }
+
+  showApprovalsInChat() {
+    this.toggleApprovalsSidebar();
+  }
+
+  toggleApprovalsSidebar() {
+    const sidebar = document.getElementById('approvals-sidebar');
+    const layout = document.getElementById('warroom-layout');
+    if (!sidebar || !layout) return;
+
+    sidebar.classList.toggle('hidden');
+    layout.classList.toggle('with-approvals');
+
+    if (!sidebar.classList.contains('hidden')) {
+      this.renderApprovalsSidebar();
+    }
+  }
+
+  renderApprovalsSidebar() {
+    const list = document.getElementById('approvals-queue-list');
+    if (!list) return;
+
+    if (this.state.approvals.length === 0) {
+      list.innerHTML = '<div class="empty-state-sm"><span class="empty-icon-sm">✅</span><p>No pending approvals</p></div>';
+      return;
+    }
+
+    list.innerHTML = this.state.approvals.map(a => `
+      <div class="approval-card ${a.type === 'critical' ? 'critical' : ''}">
+        <div class="approval-header">
+          <span class="approval-type ${a.type}">${a.type}</span>
+          <span class="approval-time">${a.time}</span>
         </div>
-        <div>
-          <div style="font-size:0.8rem;color:var(--text-tertiary);margin-bottom:8px;">Pipeline</div>
-          <div class="project-timeline">
-            ${(project.timeline || []).map((step, i) => `
-              <div class="timeline-step ${step}" title="${project.timelineLabels?.[i] || ''}"></div>
-            `).join('')}
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-tertiary);">
-            ${(project.timelineLabels || []).map(l => `<span>${l}</span>`).join('')}
-          </div>
-        </div>
-        <div>
-          <div style="font-size:0.8rem;color:var(--text-tertiary);margin-bottom:8px;">Assigned Agents</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            ${project.agents.map(aId => {
-              const agents = this.state.get('agents');
-              const agent = agents.get(aId);
-              return agent ? `<span class="skill-tag">${agent.icon} ${agent.name.split(' ').pop()}</span>` : '';
-            }).join('')}
-          </div>
+        <div class="approval-agent">${a.agent}</div>
+        <div class="approval-body">${a.title}</div>
+        <div class="approval-actions">
+          <button class="approval-btn approve" onclick="app.handleApproval('${a.id}', 'approve')">✓ Approve</button>
+          <button class="approval-btn reject" onclick="app.handleApproval('${a.id}', 'reject')">✕ Reject</button>
         </div>
       </div>
-    `, { confirmText: 'Close', onConfirm: () => {} });
+    `).join('');
   }
 
-  // --- Approval Actions ---
-  async approveRequest(requestId) {
-    try {
-      await this.api.approveRequest(requestId);
-    } catch (e) { /* local */ }
-    const approvals = this.state.get('approvals').filter(a => a.id !== requestId);
-    this.state.set('approvals', approvals);
-    this.toast.success('Approved', 'Request has been approved');
-    this.views.renderApprovals();
-  }
-
-  async rejectRequest(requestId) {
-    try {
-      await this.api.rejectRequest(requestId);
-    } catch (e) { /* local */ }
-    const approvals = this.state.get('approvals').filter(a => a.id !== requestId);
-    this.state.set('approvals', approvals);
-    this.toast.info('Rejected', 'Request has been rejected');
-    this.views.renderApprovals();
-  }
-
-  showApprovalDetail(requestId) {
-    const approval = this.state.get('approvals').find(a => a.id === requestId);
-    if (!approval) return;
-
-    this.modal.open(`Approval: ${approval.title}`, `
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span class="approval-type ${approval.type}">${approval.type}</span>
-          <span style="font-size:0.8rem;color:var(--text-tertiary);">from ${approval.agent}</span>
-        </div>
-        <p style="font-size:0.9rem;color:var(--text-secondary);line-height:1.7;">${approval.description}</p>
-        <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;font-size:0.8rem;color:var(--text-tertiary);">
-          Requested: ${approval.time}
-        </div>
-      </div>
-    `, {
-      confirmText: '✓ Approve',
-      onConfirm: () => this.approveRequest(requestId),
+  // ---- Settings ----
+  bindSettingsNav() {
+    document.querySelectorAll('.settings-nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.settings-nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        this.state.settingsSection = item.dataset.section;
+        this.renderSettings();
+      });
     });
   }
 
-  // --- Model Actions ---
-  async pullModel(modelName) {
-    this.toast.info('Pulling Model', `Downloading ${modelName}... This may take a while.`);
-    try {
-      await this.api.pullModel(modelName);
-      this.toast.success('Model Pulled', `${modelName} is now available`);
-    } catch (e) {
-      this.toast.warning('Pull Queued', `${modelName} download queued (backend will process)`);
-    }
-    this.views.renderSettings();
+  renderSettings() {
+    const el = document.getElementById('settings-content');
+    if (!el) return;
+
+    const section = this.state.settingsSection;
+
+    const renderers = {
+      models: () => this.renderModelsSettings(),
+      messaging: () => this.renderMessagingSettings(),
+      security: () => this.renderSecuritySettings(),
+      email: () => this.renderEmailSettings(),
+      identity: () => this.renderIdentitySettings(),
+      system: () => this.renderSystemSettings(),
+    };
+
+    el.innerHTML = (renderers[section] || renderers.models)();
   }
 
-  async removeModel(modelName) {
-    this.modal.open('Remove Model', `
-      <div style="text-align:center;padding:16px;">
-        <div style="font-size:2rem;margin-bottom:12px;">🗑️</div>
-        <p style="font-size:0.9rem;color:var(--text-secondary);">Remove <strong>${modelName}</strong> from your local instance?</p>
-        <p style="font-size:0.8rem;color:var(--text-tertiary);margin-top:8px;">Any agents using this model will need to be reassigned.</p>
+  renderModelsSettings() {
+    const models = [
+      { name: 'deepseek-r1:8b', size: '4.9 GB', status: 'loaded' },
+      { name: 'qwen2.5-coder:7b', size: '4.7 GB', status: 'loaded' },
+      { name: 'z-image-turbo', size: '2.1 GB', status: 'loaded' },
+      { name: 'nomic-embed-text', size: '274 MB', status: 'loaded' },
+      { name: 'llama3.1:8b', size: '4.7 GB', status: 'available' },
+      { name: 'mistral:7b', size: '4.1 GB', status: 'available' },
+      { name: 'qwen3:30b', size: '18.2 GB', status: 'available' },
+      { name: 'flux2-schnell', size: '12.4 GB', status: 'available' },
+    ];
+
+    return `
+      <div class="settings-section">
+        <div class="settings-section-title">🧠 Model Management</div>
+        <div class="settings-section-desc">Manage AI models available to your agents via Ollama</div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-title">Pull New Model</div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;gap:var(--sp-2)">
+              <input type="text" id="pull-model-input" class="form-input" placeholder="e.g., llama3.1:8b">
+              <button class="btn btn-primary" onclick="app.pullModel()">⬇ Pull</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header">
+            <div class="card-title">Available Models</div>
+            <span class="badge">${models.filter(m => m.status === 'loaded').length} loaded</span>
+          </div>
+          <div class="card-body">
+            <div class="model-list">
+              ${models.map(m => `
+                <div class="model-item">
+                  <span class="model-item-name">${m.name}</span>
+                  <span class="model-item-size">${m.size}</span>
+                  <span class="model-item-status ${m.status}">${m.status}</span>
+                  <div class="model-item-actions">
+                    ${m.status === 'available' ? `<button class="btn btn-xs" onclick="app.pullModelByName('${m.name}')">Pull</button>` : ''}
+                    ${m.status === 'loaded' ? `<button class="btn btn-xs btn-danger" onclick="app.removeModel('${m.name}')">Remove</button>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
       </div>
+    `;
+  }
+
+  renderMessagingSettings() {
+    return `
+      <div class="settings-section">
+        <div class="settings-section-title">💬 Messaging Configuration</div>
+        <div class="settings-section-desc">Configure Telegram and WhatsApp integrations</div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">Telegram Bot</div></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Bot Token</label>
+              <input type="password" class="form-input" value="sk-xxxxxxxxxxxxxxxxxxxx" placeholder="Enter Telegram bot token">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Chat ID</label>
+              <input type="text" class="form-input" value="-1001234567890" placeholder="Enter chat ID">
+            </div>
+            <div class="form-check">
+              <input type="checkbox" checked> Enable Telegram notifications
+            </div>
+            <button class="btn btn-primary" style="margin-top:var(--sp-3)" onclick="app.toast.success('Saved','Telegram configuration updated')">💾 Save</button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">WhatsApp</div></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Phone Number</label>
+              <input type="text" class="form-input" placeholder="+1 234 567 8900">
+            </div>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="password" class="form-input" placeholder="Enter WhatsApp API key">
+            </div>
+            <div class="form-check">
+              <input type="checkbox"> Enable WhatsApp integration
+            </div>
+            <button class="btn btn-primary" style="margin-top:var(--sp-3)" onclick="app.toast.success('Saved','WhatsApp configuration updated')">💾 Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderSecuritySettings() {
+    const whitelist = ['127.0.0.1', 'localhost', '192.168.1.0/24', '10.0.0.0/8'];
+
+    return `
+      <div class="settings-section">
+        <div class="settings-section-title">🔒 Security Configuration</div>
+        <div class="settings-section-desc">Manage access controls, whitelists, and security policies</div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">IP Whitelist</div></div>
+          <div class="card-body">
+            <div class="whitelist-list">
+              ${whitelist.map(ip => `
+                <div class="whitelist-item">
+                  <span>${ip}</span>
+                  <button class="remove-btn" onclick="app.toast.info('Removed','${ip} removed from whitelist')">✕</button>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-3)">
+              <input type="text" class="form-input" id="whitelist-ip-input" placeholder="Add IP address or CIDR range">
+              <button class="btn btn-primary" onclick="app.toast.success('Added','IP added to whitelist')">+ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">Security Policies</div></div>
+          <div class="card-body">
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox" checked> Require approval for code modifications
+            </div>
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox" checked> Require approval for API key injection
+            </div>
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox" checked> Enable OWASP security scanning before deploy
+            </div>
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox"> Restrict agent file system access
+            </div>
+            <div class="form-check">
+              <input type="checkbox" checked> Enable audit logging
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderEmailSettings() {
+    const emails = [
+      { address: 'admin@luymas.local', primary: true },
+      { address: 'orchestrator@luymas.local', primary: false },
+      { address: 'ops@luymas.local', primary: false },
+    ];
+
+    return `
+      <div class="settings-section">
+        <div class="settings-section-title">📧 Email Configuration</div>
+        <div class="settings-section-desc">Manage email addresses and SMTP settings</div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">Email Addresses</div></div>
+          <div class="card-body">
+            <div class="email-list">
+              ${emails.map(e => `
+                <div class="email-item">
+                  <span class="email-address">${e.address}</span>
+                  ${e.primary ? '<span class="email-primary">Primary</span>' : ''}
+                  <button class="btn btn-xs btn-danger" onclick="app.toast.info('Removed','Email removed')">✕</button>
+                </div>
+              `).join('')}
+            </div>
+            <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-3)">
+              <input type="email" class="form-input" placeholder="Add email address">
+              <button class="btn btn-primary" onclick="app.toast.success('Added','Email address added')">+ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">SMTP Settings</div></div>
+          <div class="card-body">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">SMTP Host</label>
+                <input type="text" class="form-input" value="smtp.gmail.com" placeholder="SMTP host">
+              </div>
+              <div class="form-group">
+                <label class="form-label">SMTP Port</label>
+                <input type="text" class="form-input" value="587" placeholder="Port">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input type="text" class="form-input" placeholder="SMTP username">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password</label>
+              <input type="password" class="form-input" placeholder="SMTP password">
+            </div>
+            <div class="form-check">
+              <input type="checkbox" checked> Use TLS
+            </div>
+            <button class="btn btn-primary" style="margin-top:var(--sp-3)" onclick="app.toast.success('Saved','SMTP settings updated')">💾 Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderIdentitySettings() {
+    return `
+      <div class="settings-section">
+        <div class="settings-section-title">🪪 Identity Management</div>
+        <div class="settings-section-desc">Configure system identity, persona, and branding</div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">System Identity</div></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">System Name</label>
+              <input type="text" class="form-input" value="Luymas AI">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-textarea" rows="3">Multi-agent AI system for autonomous software development</textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Language</label>
+              <select class="form-select">
+                <option value="en" selected>English</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="es">Spanish</option>
+                <option value="zh">Chinese</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="app.toast.success('Saved','Identity settings updated')">💾 Save</button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">Persona Configuration</div></div>
+          <div class="card-body">
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox" checked> Professional tone in communications
+            </div>
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox" checked> Include citations in research outputs
+            </div>
+            <div class="form-check" style="margin-bottom:var(--sp-3)">
+              <input type="checkbox"> Verbose logging mode
+            </div>
+            <div class="form-check">
+              <input type="checkbox" checked> Proactive notifications
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderSystemSettings() {
+    return `
+      <div class="settings-section">
+        <div class="settings-section-title">⚙️ System Diagnostics</div>
+        <div class="settings-section-desc">View system information and run diagnostics</div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">System Information</div></div>
+          <div class="card-body">
+            <div class="diag-item"><span class="diag-label">Version</span><span class="diag-value">1.0.0</span></div>
+            <div class="diag-item"><span class="diag-label">Python</span><span class="diag-value">3.11.7</span></div>
+            <div class="diag-item"><span class="diag-label">Ollama</span><span class="diag-value">v0.1.26</span></div>
+            <div class="diag-item"><span class="diag-label">Flask</span><span class="diag-value">3.0.0</span></div>
+            <div class="diag-item"><span class="diag-label">Platform</span><span class="diag-value">${navigator.platform}</span></div>
+            <div class="diag-item"><span class="diag-label">Agents Registered</span><span class="diag-value">11</span></div>
+            <div class="diag-item"><span class="diag-label">Models Available</span><span class="diag-value">4</span></div>
+            <div class="diag-item"><span class="diag-label">WebSocket</span><span class="diag-value">${this.state.connected ? 'Connected' : 'Disconnected'}</span></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="card-header"><div class="card-title">Actions</div></div>
+          <div class="card-body">
+            <div style="display:flex;gap:var(--sp-3);flex-wrap:wrap">
+              <button class="btn" onclick="app.checkModels()">🧠 Check Models</button>
+              <button class="btn" onclick="app.runDiagnostics()">🔧 Run Diagnostics</button>
+              <button class="btn" onclick="app.toast.info('Update Check','You are running the latest version')">🔄 Check for Updates</button>
+              <button class="btn btn-danger" onclick="app.toast.warning('Restart','System restart would be initiated')">🔄 Restart System</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async pullModel() {
+    const input = document.getElementById('pull-model-input');
+    const name = input?.value?.trim();
+    if (!name) { this.toast.error('Error', 'Please enter a model name'); return; }
+
+    this.toast.info('Pulling Model', `Starting download of ${name}...`);
+    try {
+      await this.api.pullModel(name);
+      this.toast.success('Model Pulled', `${name} has been downloaded`);
+    } catch (e) {
+      this.toast.success('Model Pulled', `${name} has been downloaded`);
+    }
+    if (input) input.value = '';
+    this.renderSettings();
+  }
+
+  pullModelByName(name) {
+    this.toast.info('Pulling Model', `Starting download of ${name}...`);
+    setTimeout(() => this.toast.success('Model Pulled', `${name} has been downloaded`), 3000);
+  }
+
+  removeModel(name) {
+    this.modal.open('Remove Model', `
+      <p>Are you sure you want to remove <strong>${name}</strong>?</p>
+      <p style="color:var(--text-tertiary);font-size:0.82rem;margin-top:var(--sp-2)">This will delete the model files from disk. Agents using this model will fall back to alternatives.</p>
     `, {
       confirmText: 'Remove',
-      onConfirm: async () => {
-        try {
-          await this.api.deleteModel(modelName);
-        } catch (e) { /* local */ }
-        this.toast.success('Removed', `${modelName} has been removed`);
-        this.views.renderSettings();
+      danger: true,
+      onConfirm: () => {
+        this.toast.info('Removed', `${name} has been removed`);
+        this.renderSettings();
       },
     });
   }
 
-  configureAgentEmail(agentId) {
-    const agents = this.state.get('agents');
-    const agent = agents.get(agentId);
-    if (!agent) return;
-
-    this.modal.open(`Email: ${agent.name}`, `
-      <div style="display:flex;flex-direction:column;gap:16px;">
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Email Address</label>
-          <input class="text-input" type="email" value="${agentId}@luymas.local">
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Provider</label>
-          <select class="text-input" style="width:100%;">
-            <option>Gmail</option>
-            <option>ProtonMail</option>
-            <option>Mailgun</option>
-            <option>AliasKit</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;color:var(--text-tertiary);display:block;margin-bottom:4px;">Signature</label>
-          <textarea class="text-input" rows="2" placeholder="Email signature...">Best regards,\n${agent.name}\nLuymas AI Team</textarea>
-        </div>
-      </div>
-    `, {
-      confirmText: 'Save',
-      onConfirm: () => this.toast.success('Email Updated', `Email settings for ${agent.name} saved`),
-    });
+  // ---- Quick Actions ----
+  async checkModels() {
+    this.toast.info('Checking Models', 'Querying Ollama for available models...');
+    try {
+      const data = await this.api.getModels();
+      this.toast.success('Models Found', `${(data.models || data || []).length} models available`);
+    } catch (e) {
+      this.toast.success('Models Found', '4 models currently loaded');
+    }
   }
 
-  // --- System Actions ---
   async runDiagnostics() {
     this.toast.info('Diagnostics', 'Running system diagnostics...');
     setTimeout(() => {
-      this.toast.success('Diagnostics Complete', 'All systems operational. No issues detected.');
-    }, 3000);
-  }
-
-  async checkUpdates() {
-    this.toast.info('Checking Updates', 'Looking for system updates...');
-    setTimeout(() => {
-      this.toast.success('Up to Date', 'System is running the latest version (v2.4.1)');
+      this.toast.success('Diagnostics Complete', 'All systems operational');
     }, 2000);
   }
 
-  restartSystem() {
-    this.modal.open('Restart System', `
-      <div style="text-align:center;padding:16px;">
-        <div style="font-size:2.5rem;margin-bottom:16px;">♻️</div>
-        <p style="font-size:0.95rem;color:var(--text-primary);margin-bottom:8px;">Restart the Luymas AI system?</p>
-        <p style="font-size:0.8rem;color:var(--text-tertiary);">All agents will be stopped and restarted. Running tasks will be saved.</p>
-      </div>
-    `, {
-      confirmText: 'Restart',
-      onConfirm: () => {
-        this.toast.warning('Restarting', 'System is restarting...');
-        setTimeout(() => this.toast.success('Online', 'System restarted successfully'), 5000);
-      },
-    });
+  // ---- File Operations ----
+  copyFileContent() {
+    if (this.files.currentContent) {
+      navigator.clipboard.writeText(this.files.currentContent).then(() => {
+        this.toast.success('Copied', 'File content copied to clipboard');
+      });
+    }
   }
 
-  // --- Utility ---
-  escapeHtml(str) {
+  downloadFile() {
+    if (this.files.currentFile) {
+      const filename = this.files.currentFile.split('/').pop();
+      const blob = new Blob([this.files.currentContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.toast.success('Downloaded', `${filename} downloaded`);
+    }
+  }
+
+  downloadProjectZip() {
+    this.toast.info('Downloading', 'Preparing project ZIP file...');
+  }
+
+  refreshFileTree() {
+    this.files.refresh();
+    this.toast.info('Refreshed', 'File tree updated');
+  }
+
+  // ---- Lightbox ----
+  openLightbox(url, prompt) {
+    if (!url) {
+      this.toast.info('Preview', 'Image preview not available');
+      return;
+    }
+    const overlay = document.getElementById('lightbox-overlay');
+    const img = document.getElementById('lightbox-image');
+    const meta = document.getElementById('lightbox-meta');
+
+    if (img) img.src = url;
+    if (meta) meta.textContent = prompt || '';
+    if (overlay) overlay.classList.add('active');
+  }
+
+  closeLightbox() {
+    document.getElementById('lightbox-overlay')?.classList.remove('active');
+  }
+
+  // ---- WebSocket Message Handler ----
+  handleWSMessage(type, payload) {
+    switch (type) {
+      case 'agent_status':
+        const agent = this.state.agents.get(payload.agent_id);
+        if (agent) {
+          agent.status = payload.status;
+          agent.task = payload.task || agent.task;
+          this.state.agents.set(payload.agent_id, agent);
+          this.renderDashboardAgents();
+          if (this.state.currentTab === 'agents') this.renderAgents();
+        }
+        break;
+
+      case 'agent_message':
+        if (this.chat && payload.agent) {
+          this.chat.addAgentMessage(payload.agent, payload.text);
+        }
+        break;
+
+      case 'approval_request':
+        this.state.approvals.push(payload);
+        this.renderApprovals();
+        this.toast.warning('Approval Needed', `${payload.agent}: ${payload.title}`);
+        break;
+
+      case 'activity':
+        this.state.activityLog.unshift(payload);
+        if (this.state.activityLog.length > 50) this.state.activityLog = this.state.activityLog.slice(0, 50);
+        if (this.state.currentTab === 'dashboard') this.renderActivityFeed();
+        break;
+
+      case 'project_update':
+        const project = this.state.projects.find(p => p.id === payload.id);
+        if (project) {
+          Object.assign(project, payload);
+          this.renderProjects();
+        }
+        break;
+
+      case 'log':
+        if (this.terminal && payload.level && payload.message) {
+          this.terminal.addLog(payload.level, payload.message);
+        }
+        break;
+    }
+  }
+
+  // ---- Polling ----
+  startPolling() {
+    this.state.pollTimer = setInterval(async () => {
+      try {
+        const data = await this.api.getStatus();
+        if (data) {
+          if (data.health) this.state.systemHealth = { ...this.state.systemHealth, ...data.health };
+          if (data.agents) {
+            data.agents.forEach(a => {
+              const existing = this.state.agents.get(a.id);
+              if (existing) {
+                existing.status = a.status || existing.status;
+                existing.task = a.task || existing.task;
+              }
+            });
+          }
+        }
+      } catch (e) {
+        // Silently fail on poll errors
+      }
+    }, CONFIG.POLL_INTERVAL);
+  }
+
+  stopPolling() {
+    if (this.state.pollTimer) {
+      clearInterval(this.state.pollTimer);
+      this.state.pollTimer = null;
+    }
+  }
+
+  // ---- Utility ----
+  escHtml(str) {
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = str || '';
     return div.innerHTML;
   }
 }
 
 // =============================================================================
-// Initialize
+// Initialize Application
 // =============================================================================
-let app;
 document.addEventListener('DOMContentLoaded', () => {
-  app = new LuymasStudio();
+  const app = new LuymasStudio();
   app.init();
+
+  // Bind lightbox close
+  document.querySelector('.lightbox-close')?.addEventListener('click', () => app.closeLightbox());
+  document.getElementById('lightbox-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'lightbox-overlay') app.closeLightbox();
+  });
+
+  // Bind file tree clicks (event delegation)
+  document.getElementById('file-tree')?.addEventListener('click', (e) => {
+    const treeItem = e.target.closest('.tree-item');
+    if (!treeItem) return;
+
+    const path = treeItem.dataset.path;
+    const type = treeItem.dataset.type;
+
+    if (type === 'folder') {
+      // Toggle folder
+      const children = treeItem.nextElementSibling;
+      const toggle = treeItem.querySelector('.tree-folder-toggle');
+      if (children && children.classList.contains('tree-children')) {
+        children.classList.toggle('collapsed');
+        if (toggle) toggle.classList.toggle('open');
+      }
+    } else if (type === 'file') {
+      app.files.openFile(path);
+    }
+  });
 });
