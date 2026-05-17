@@ -10,12 +10,25 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
+
+try:
+    import requests  # ✅ Réel
+    _HAS_REQUESTS = True
+except ImportError:
+    _HAS_REQUESTS = False
+
+try:
+    from core.email_factory import EmailManager, EmailProvider  # ✅ Réel
+    _HAS_EMAIL_FACTORY = True
+except ImportError:
+    _HAS_EMAIL_FACTORY = False
 
 logger = logging.getLogger(__name__)
 
@@ -103,26 +116,81 @@ class AuditEntry:
 class IdentityCreator:
     """Creates complete identities for agents including email, phone, and accounts."""
 
+    def __init__(self) -> None:
+        self._email_manager: Optional[Any] = None
+        if _HAS_EMAIL_FACTORY:
+            try:
+                self._email_manager = EmailManager()  # ✅ Réel
+            except Exception as exc:
+                logger.warning("Could not initialize EmailManager: %s", exc)
+
     def create_identity(self, agent_name: str, agent_role: str) -> Identity:
-        """Create a full digital identity for an agent."""
-        identity = Identity(
-            agent_name=agent_name,
-            agent_role=agent_role,
-            email=f"luymas.{agent_name.lower()}@luymas.ai",
-            phone=f"+1-555-{self._generate_phone_suffix(agent_name)}",
-            display_name=f"Luymas {agent_name}",
-            service_accounts=[
-                ServiceAccount(
+        """Create a full digital identity for an agent.
+
+        Integrates with EmailManager from core.email_factory to create
+        real email accounts when available.
+        """
+        service_accounts: list[ServiceAccount] = []
+        email_address = f"luymas.{agent_name.lower()}@luymas.ai"  # fallback
+        phone = f"+1-555-{self._generate_phone_suffix(agent_name)}"  # fallback
+
+        # ✅ Réel — Create email via EmailManager if available
+        if self._email_manager is not None:
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # We're inside an async context; schedule the coroutine
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        email_address = pool.submit(
+                            asyncio.run,
+                            self._email_manager.create_email_for_agent(agent_name, agent_role)  # ✅ Réel
+                        ).result() or email_address
+                else:
+                    email_address = loop.run_until_complete(
+                        self._email_manager.create_email_for_agent(agent_name, agent_role)  # ✅ Réel
+                    ) or email_address
+
+                service_accounts.append(ServiceAccount(  # ✅ Réel
+                    service=ServiceType.EMAIL,
+                    username=agent_name.lower(),
+                    account_id=uuid.uuid4().hex[:8],
+                    metadata={"provider": "email_factory", "address": email_address},
+                ))
+                logger.info("Created email via EmailManager: %s", email_address)  # ✅ Réel
+            except Exception as exc:
+                logger.warning("EmailManager failed, using fallback email: %s", exc)
+                service_accounts.append(ServiceAccount(
                     service=ServiceType.EMAIL,
                     username=f"luymas.{agent_name.lower()}",
                     account_id=uuid.uuid4().hex[:8],
-                ),
-                ServiceAccount(
-                    service=ServiceType.PHONE,
-                    username=agent_name.lower(),
-                    account_id=uuid.uuid4().hex[:8],
-                ),
-            ],
+                    metadata={"provider": "fallback", "note": "⚠️ EmailManager non configuré."},
+                ))
+        else:
+            logger.info("⚠️ email_factory non configuré. Using fallback email for %s", agent_name)
+            service_accounts.append(ServiceAccount(
+                service=ServiceType.EMAIL,
+                username=f"luymas.{agent_name.lower()}",
+                account_id=uuid.uuid4().hex[:8],
+                metadata={"provider": "fallback"},
+            ))
+
+        # Phone account (placeholder — no real phone provider integrated)
+        service_accounts.append(ServiceAccount(
+            service=ServiceType.PHONE,
+            username=agent_name.lower(),
+            account_id=uuid.uuid4().hex[:8],
+            metadata={"phone": phone, "note": "Phone requires AliasKit or Twilio integration"},
+        ))
+
+        identity = Identity(
+            agent_name=agent_name,
+            agent_role=agent_role,
+            email=email_address,
+            phone=phone,
+            display_name=f"Luymas {agent_name}",
+            service_accounts=service_accounts,
         )
         logger.info("Created identity for agent '%s' (role=%s, email=%s)",
                      agent_name, agent_role, identity.email)
@@ -276,10 +344,180 @@ class AccountCreator:
     async def create_service_account(self, agent_name: str,
                                      service: ServiceType,
                                      identity: Identity) -> ServiceAccount:
-        """Create an account on an external service."""
-        service_info = self.SUPPORTED_SERVICES.get(service, {})
+        """Create an account on an external service.
+
+        Makes real API calls where possible (GitHub, Docker Hub, Vercel).
+        Falls back to placeholder accounts when tokens are not configured.
+        """
         username = f"luymas_{agent_name.lower()}"
 
+        # ── GitHub: create a repository via API (if token available) ──
+        if service == ServiceType.GITHUB:
+            github_token = os.environ.get("GITHUB_TOKEN", "")  # ✅ Réel
+            if _HAS_REQUESTS and github_token:
+                try:
+                    response = requests.post(  # ✅ Réel
+                        "https://api.github.com/user/repos",
+                        headers={
+                            "Authorization": f"token {github_token}",
+                            "Accept": "application/vnd.github+json",
+                        },
+                        json={
+                            "name": f"luymas-{agent_name.lower()}",
+                            "description": f"Luymas AI agent workspace for {agent_name}",
+                            "private": True,
+                            "auto_init": True,
+                        },
+                        timeout=15,
+                    )
+                    if response.status_code in (200, 201):  # ✅ Réel
+                        repo_data = response.json()  # ✅ Réel
+                        logger.info("Created GitHub repo for '%s': %s",  # ✅ Réel
+                                     agent_name, repo_data.get("full_name", ""))
+                        return ServiceAccount(
+                            service=service,
+                            username=identity.email.split("@")[0],
+                            account_id=str(repo_data.get("id", "")),
+                            metadata={
+                                "repo_url": repo_data.get("html_url", ""),
+                                "repo_name": repo_data.get("full_name", ""),
+                                "creation_method": "api",
+                            },
+                        )
+                    else:
+                        logger.warning("GitHub API returned %d: %s",
+                                        response.status_code, response.text[:200])
+                except Exception as exc:
+                    logger.error("GitHub account creation failed: %s", exc)
+            else:
+                logger.info("⚠️ GITHUB_TOKEN non configuré. Cannot create GitHub repo for '%s'.", agent_name)
+
+        # ── Docker Hub: create repository via API (if token available) ──
+        elif service == ServiceType.DOCKER:
+            docker_user = os.environ.get("DOCKERHUB_USERNAME", "")  # ✅ Réel
+            docker_token = os.environ.get("DOCKERHUB_TOKEN", "")  # ✅ Réel
+            if _HAS_REQUESTS and docker_user and docker_token:
+                try:
+                    # Get JWT token first
+                    auth_resp = requests.post(  # ✅ Réel
+                        "https://hub.docker.com/v2/users/login/",
+                        json={"username": docker_user, "password": docker_token},
+                        timeout=15,
+                    )
+                    if auth_resp.status_code == 200:
+                        jwt_token = auth_resp.json().get("token", "")  # ✅ Réel
+                        # Create a repository
+                        repo_resp = requests.post(  # ✅ Réel
+                            f"https://hub.docker.com/v2/repositories/",
+                            headers={"Authorization": f"JWT {jwt_token}"},
+                            json={
+                                "namespace": docker_user,
+                                "name": f"luymas-{agent_name.lower()}",
+                                "description": f"Luymas AI agent: {agent_name}",
+                                "is_private": True,
+                            },
+                            timeout=15,
+                        )
+                        if repo_resp.status_code in (200, 201):  # ✅ Réel
+                            repo_data = repo_resp.json()  # ✅ Réel
+                            logger.info("Created Docker Hub repo for '%s'", agent_name)  # ✅ Réel
+                            return ServiceAccount(
+                                service=service,
+                                username=docker_user,
+                                account_id=str(repo_data.get("id", "")),
+                                metadata={
+                                    "repo_name": f"{docker_user}/luymas-{agent_name.lower()}",
+                                    "creation_method": "api",
+                                },
+                            )
+                        else:
+                            logger.warning("Docker Hub repo creation returned %d", repo_resp.status_code)
+                    else:
+                        logger.warning("Docker Hub auth failed: %d", auth_resp.status_code)
+                except Exception as exc:
+                    logger.error("Docker Hub account creation failed: %s", exc)
+            else:
+                logger.info("⚠️ DOCKERHUB_USERNAME/TOKEN non configuré. Cannot create Docker Hub repo for '%s'.", agent_name)
+
+        # ── Vercel: create project via API (if token available) ──
+        elif service == ServiceType.VERCEL:
+            vercel_token = os.environ.get("VERCEL_TOKEN", "")  # ✅ Réel
+            if _HAS_REQUESTS and vercel_token:
+                try:
+                    response = requests.post(  # ✅ Réel
+                        "https://api.vercel.com/v9/projects",
+                        headers={
+                            "Authorization": f"Bearer {vercel_token}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "name": f"luymas-{agent_name.lower()}",
+                            "framework": None,
+                        },
+                        timeout=15,
+                    )
+                    if response.status_code in (200, 201):  # ✅ Réel
+                        proj_data = response.json()  # ✅ Réel
+                        logger.info("Created Vercel project for '%s': %s",  # ✅ Réel
+                                     agent_name, proj_data.get("name", ""))
+                        return ServiceAccount(
+                            service=service,
+                            username=identity.email.split("@")[0],
+                            account_id=proj_data.get("id", ""),
+                            metadata={
+                                "project_name": proj_data.get("name", ""),
+                                "project_url": f"https://vercel.com/{proj_data.get('name', '')}",
+                                "creation_method": "api",
+                            },
+                        )
+                    else:
+                        logger.warning("Vercel API returned %d: %s",
+                                        response.status_code, response.text[:200])
+                except Exception as exc:
+                    logger.error("Vercel account creation failed: %s", exc)
+            else:
+                logger.info("⚠️ VERCEL_TOKEN non configuré. Cannot create Vercel project for '%s'.", agent_name)
+
+        # ── Netlify: create site via API (if token available) ──
+        elif service == ServiceType.NETLIFY:
+            netlify_token = os.environ.get("NETLIFY_TOKEN", "")  # ✅ Réel
+            if _HAS_REQUESTS and netlify_token:
+                try:
+                    response = requests.post(  # ✅ Réel
+                        "https://api.netlify.com/api/v1/sites",
+                        headers={
+                            "Authorization": f"Bearer {netlify_token}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "name": f"luymas-{agent_name.lower()}",
+                            "custom_domain": "",
+                        },
+                        timeout=15,
+                    )
+                    if response.status_code in (200, 201):  # ✅ Réel
+                        site_data = response.json()  # ✅ Réel
+                        logger.info("Created Netlify site for '%s'", agent_name)  # ✅ Réel
+                        return ServiceAccount(
+                            service=service,
+                            username=identity.email.split("@")[0],
+                            account_id=site_data.get("id", ""),
+                            metadata={
+                                "site_name": site_data.get("name", ""),
+                                "site_url": site_data.get("url", ""),
+                                "creation_method": "api",
+                            },
+                        )
+                    else:
+                        logger.warning("Netlify API returned %d: %s",
+                                        response.status_code, response.text[:200])
+                except Exception as exc:
+                    logger.error("Netlify account creation failed: %s", exc)
+            else:
+                logger.info("⚠️ NETLIFY_TOKEN non configuré. Cannot create Netlify site for '%s'.", agent_name)
+
+        # ── Fallback: create placeholder account ──
+        service_info = self.SUPPORTED_SERVICES.get(service, {})
         account = ServiceAccount(
             service=service,
             username=username,
@@ -287,15 +525,10 @@ class AccountCreator:
             metadata={
                 "creation_method": service_info.get("method", "unknown"),
                 "service_url": service_info.get("url", ""),
+                "note": f"⚠️ {service.value} API non configuré. Placeholder account created.",
             },
         )
-
-        # In production: automate account creation via:
-        # - API calls (Docker Hub, Vercel, Netlify)
-        # - Browser automation with captcha solver (GitHub, Slack, Discord)
-        # - CLI tools (AWS)
-
-        logger.info("Created %s account for '%s': %s",
+        logger.info("Created placeholder %s account for '%s': %s (no API integration)",
                      service.value, agent_name, username)
         return account
 

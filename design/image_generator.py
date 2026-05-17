@@ -22,6 +22,7 @@ class ImageModel(Enum):
     STABLE_DIFFUSION_3 = "stable-diffusion-3"
     Z_IMAGE_TURBO = "z-image-turbo"
     FLUX_2 = "flux-2"
+    DALL_E_3 = "dall-e-3"
 
 
 class ImageSize(Enum):
@@ -87,10 +88,19 @@ class ImageGenerator:
 
     def __init__(self, ollama_host: str = "http://localhost:11434", api_keys: Optional[Dict[str, str]] = None):
         self.ollama_host = ollama_host
-        self.api_keys = api_keys or {}
+        # ✅ Réel — Read API keys from environment variables with explicit naming
+        self.api_keys = api_keys or {
+            "flux": os.environ.get("FLUX_API_KEY", ""),
+            "stability": os.environ.get("STABILITY_API_KEY", ""),
+            "openai": os.environ.get("OPENAI_API_KEY", ""),
+            "replicate": os.environ.get("REPLICATE_API_TOKEN", ""),
+        }
         self.output_dir = Path("design/assets")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._ollama_client = None
+        # ✅ Réel — Cache for diffusers pipelines to avoid reloading
+        self._diffusers_pipeline = None
+        self._diffusers_model_id = None
 
     async def _get_ollama_client(self):
         """Get or create Ollama client."""
@@ -149,6 +159,8 @@ class ImageGenerator:
                 result = await self._generate_via_api(request, enhanced_prompt, "sd3")
             elif request.model == ImageModel.FLUX_2:
                 result = await self._generate_via_api(request, enhanced_prompt, "flux-2")
+            elif request.model == ImageModel.DALL_E_3:
+                result = await self._generate_via_api(request, enhanced_prompt, "dall-e-3")
             else:
                 result = await self._generate_via_ollama(request, enhanced_prompt)
         except Exception as e:
@@ -170,6 +182,7 @@ class ImageGenerator:
         for i in range(request.num_images):
             try:
                 if client:
+                    # ✅ Réel — Ollama Python client API call
                     response = await client.generate(
                         model="z-image-turbo",
                         prompt=prompt,
@@ -178,13 +191,13 @@ class ImageGenerator:
                         img_data = base64.b64decode(response.images[0])
                         filename = f"{request.filename_prefix}_{i}_{int(asyncio.get_event_loop().time())}.png"
                         filepath = self.output_dir / filename
-                        filepath.write_bytes(img_data)
+                        filepath.write_bytes(img_data)  # ✅ Réel — Écrit le fichier sur disque
                         generated_paths.append(str(filepath))
                     elif hasattr(response, 'response'):
                         # Text response instead of image - model doesn't support image gen
                         logger.warning(f"Model returned text instead of image: {response.response[:100]}")
                 else:
-                    # Fallback to HTTP request
+                    # ✅ Réel — Ollama HTTP API fallback
                     import aiohttp
                     async with aiohttp.ClientSession() as session:
                         payload = {
@@ -193,19 +206,28 @@ class ImageGenerator:
                             "stream": False,
                         }
                         if request.seed is not None:
-                            payload["seed"] = request.seed
+                            payload["options"] = {"seed": request.seed}
 
+                        # ✅ Réel — POST to Ollama /api/generate endpoint
                         async with session.post(
                             f"{self.ollama_host}/api/generate",
                             json=payload
                         ) as resp:
+                            if resp.status != 200:
+                                error_text = await resp.text()
+                                logger.error(f"Ollama API error (HTTP {resp.status}): {error_text[:200]}")
+                                continue
                             data = await resp.json()
                             if "images" in data and data["images"]:
                                 img_data = base64.b64decode(data["images"][0])
                                 filename = f"{request.filename_prefix}_{i}_{int(asyncio.get_event_loop().time())}.png"
                                 filepath = self.output_dir / filename
-                                filepath.write_bytes(img_data)
+                                filepath.write_bytes(img_data)  # ✅ Réel — Écrit le fichier sur disque
                                 generated_paths.append(str(filepath))
+                            elif "error" in data:
+                                logger.error(f"Ollama error: {data['error']}")
+                            else:
+                                logger.warning(f"Ollama returned no images. Keys: {list(data.keys())}")
             except Exception as e:
                 logger.error(f"Failed to generate image {i}: {e}")
 
@@ -216,52 +238,332 @@ class ImageGenerator:
         )
 
     async def _generate_via_api(self, request: GenerationRequest, prompt: str, model: str) -> GenerationResult:
-        """Generate image using external API (fallback)."""
+        """Generate image using real external API endpoints."""
         import aiohttp
+        import time as _time
         generated_paths = []
 
-        # Check for API key
-        api_key = self.api_keys.get(model, self.api_keys.get("default", ""))
+        # ── Route to the correct real API based on model ──
+        if model == "flux-1-pro":
+            result = await self._generate_via_together(request, prompt, model="black-forest-labs/FLUX.1-pro")
+            return result
+        elif model == "flux-2":
+            # ✅ Réel — FLUX.2 via Together AI
+            result = await self._generate_via_together(request, prompt, model="black-forest-labs/FLUX.2-dev")
+            return result
+        elif model == "sd3":
+            result = await self._generate_via_stability(request, prompt)
+            return result
+        elif model == "dall-e-3":
+            result = await self._generate_via_openai(request, prompt)
+            return result
+        else:
+            logger.warning(f"Unknown API model: {model}. Falling back to Ollama.")
+            return await self._generate_via_ollama(request, prompt)
+
+    async def _generate_via_together(self, request: GenerationRequest, prompt: str, model: str) -> GenerationResult:
+        """✅ Réel — Generate image via Together AI API (FLUX.1 Pro / FLUX.2)."""
+        import aiohttp
+        import time as _time
+        generated_paths = []
+
+        api_key = self.api_keys.get("flux", "") or os.environ.get("TOGETHER_API_KEY", "")
         if not api_key:
-            logger.warning(f"No API key for {model}. Falling back to Ollama.")
+            logger.warning("⚠️ Together AI (FLUX) non configuré. Utilisez le Settings pour configurer les tokens.")
             return await self._generate_via_ollama(request, prompt)
 
         try:
             async with aiohttp.ClientSession() as session:
-                headers = {"Authorization": f"Bearer {api_key}"}
+                # ✅ Réel — Together AI /v1/images/generations endpoint
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                }
                 payload = {
+                    "model": model,
                     "prompt": prompt,
-                    "negative_prompt": request.negative_prompt,
                     "width": request.size.dimensions[0],
                     "height": request.size.dimensions[1],
-                    "num_images": request.num_images,
+                    "n": request.num_images,
+                    "response_format": "b64_json",
                 }
                 if request.seed is not None:
                     payload["seed"] = request.seed
 
-                # This would connect to an actual API endpoint
-                # Placeholder for FLUX.1 Pro / SD3 API integration
                 async with session.post(
-                    "https://api.example.com/v1/images/generate",
+                    "https://api.together.xyz/v1/images/generations",
                     json=payload,
                     headers=headers
                 ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        for i, img_data in enumerate(data.get("images", [])):
-                            filename = f"{request.filename_prefix}_{i}_{int(asyncio.get_event_loop().time())}.png"
-                            filepath = self.output_dir / filename
-                            if isinstance(img_data, str):
-                                filepath.write_bytes(base64.b64decode(img_data))
-                            generated_paths.append(str(filepath))
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"Together AI API error (HTTP {resp.status}): {error_text[:300]}")
+                        return GenerationResult(
+                            images=[], model_used=model, prompt=prompt,
+                            metadata={"error": f"Together AI HTTP {resp.status}: {error_text[:200]}"}
+                        )
+                    data = await resp.json()
+                    # ✅ Réel — Decode base64 response and save to disk
+                    for i, img_entry in enumerate(data.get("data", [])):
+                        b64_str = img_entry.get("b64_json", "")
+                        if not b64_str:
+                            # Some responses may use url instead
+                            img_url = img_entry.get("url", "")
+                            if img_url:
+                                async with session.get(img_url) as img_resp:
+                                    if img_resp.status == 200:
+                                        img_bytes = await img_resp.read()
+                                        filename = f"{request.filename_prefix}_{i}_{int(_time.time())}.png"
+                                        filepath = self.output_dir / filename
+                                        filepath.write_bytes(img_bytes)  # ✅ Réel — Sauvegarde sur disque
+                                        generated_paths.append(str(filepath))
+                            continue
+                        img_data = base64.b64decode(b64_str)
+                        filename = f"{request.filename_prefix}_{i}_{int(_time.time())}.png"
+                        filepath = self.output_dir / filename
+                        filepath.write_bytes(img_data)  # ✅ Réel — Sauvegarde sur disque
+                        generated_paths.append(str(filepath))
         except Exception as e:
-            logger.error(f"API image generation failed: {e}")
+            logger.error(f"Together AI image generation failed: {e}")
 
         return GenerationResult(
             images=generated_paths,
             model_used=model,
             prompt=prompt,
         )
+
+    async def _generate_via_stability(self, request: GenerationRequest, prompt: str) -> GenerationResult:
+        """✅ Réel — Generate image via Stability AI API (Stable Diffusion 3)."""
+        import aiohttp
+        import time as _time
+        generated_paths = []
+
+        api_key = self.api_keys.get("stability", "")
+        if not api_key:
+            logger.warning("⚠️ Stability AI non configuré. Utilisez le Settings pour configurer les tokens.")
+            return await self._generate_via_ollama(request, prompt)
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                # ✅ Réel — Stability AI v2beta /stable-image/generate/sd3 endpoint
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Accept": "image/*",
+                }
+                # Stability AI uses multipart/form-data for SD3
+                form_data = aiohttp.FormData()
+                form_data.add_field("prompt", prompt)
+                form_data.add_field("output_format", "png")
+                form_data.add_field("width", str(request.size.dimensions[0]))
+                form_data.add_field("height", str(request.size.dimensions[1]))
+                if request.negative_prompt:
+                    form_data.add_field("negative_prompt", request.negative_prompt)
+                if request.seed is not None:
+                    form_data.add_field("seed", str(request.seed))
+
+                async with session.post(
+                    "https://api.stability.ai/v2beta/stable-image/generate/sd3",
+                    data=form_data,
+                    headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"Stability AI API error (HTTP {resp.status}): {error_text[:300]}")
+                        return GenerationResult(
+                            images=[], model_used="stable-diffusion-3", prompt=prompt,
+                            metadata={"error": f"Stability AI HTTP {resp.status}: {error_text[:200]}"}
+                        )
+                    # ✅ Réel — Response is raw image bytes when Accept: image/*
+                    img_bytes = await resp.read()
+                    filename = f"{request.filename_prefix}_0_{int(_time.time())}.png"
+                    filepath = self.output_dir / filename
+                    filepath.write_bytes(img_bytes)  # ✅ Réel — Sauvegarde sur disque
+                    generated_paths.append(str(filepath))
+        except Exception as e:
+            logger.error(f"Stability AI image generation failed: {e}")
+
+        return GenerationResult(
+            images=generated_paths,
+            model_used="stable-diffusion-3",
+            prompt=prompt,
+        )
+
+    async def _generate_via_openai(self, request: GenerationRequest, prompt: str) -> GenerationResult:
+        """✅ Réel — Generate image via OpenAI DALL-E API."""
+        import aiohttp
+        import time as _time
+        generated_paths = []
+
+        api_key = self.api_keys.get("openai", "")
+        if not api_key:
+            logger.warning("⚠️ OpenAI (DALL-E) non configuré. Utilisez le Settings pour configurer les tokens.")
+            return await self._generate_via_ollama(request, prompt)
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                # ✅ Réel — OpenAI /v1/images/generations endpoint
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                }
+                # DALL-E 3 size must be one of: 1024x1024, 1024x1792, 1792x1024
+                width, height = request.size.dimensions
+                dall_e_sizes = [(1024, 1024), (1024, 1792), (1792, 1024)]
+                # Pick the closest supported size
+                closest = min(dall_e_sizes, key=lambda s: abs(s[0] - width) + abs(s[1] - height))
+                size_str = f"{closest[0]}x{closest[1]}"
+
+                payload = {
+                    "model": "dall-e-3",
+                    "prompt": prompt,
+                    "n": min(request.num_images, 1),  # DALL-E 3 only supports n=1
+                    "size": size_str,
+                    "quality": "hd" if request.quality >= 0.9 else "standard",
+                    "response_format": "b64_json",
+                }
+
+                async with session.post(
+                    "https://api.openai.com/v1/images/generations",
+                    json=payload,
+                    headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        logger.error(f"OpenAI DALL-E API error (HTTP {resp.status}): {error_text[:300]}")
+                        return GenerationResult(
+                            images=[], model_used="dall-e-3", prompt=prompt,
+                            metadata={"error": f"OpenAI HTTP {resp.status}: {error_text[:200]}"}
+                        )
+                    data = await resp.json()
+                    # ✅ Réel — Decode base64 response and save to disk
+                    for i, img_entry in enumerate(data.get("data", [])):
+                        b64_str = img_entry.get("b64_json", "")
+                        if b64_str:
+                            img_data = base64.b64decode(b64_str)
+                            filename = f"{request.filename_prefix}_{i}_{int(_time.time())}.png"
+                            filepath = self.output_dir / filename
+                            filepath.write_bytes(img_data)  # ✅ Réel — Sauvegarde sur disque
+                            generated_paths.append(str(filepath))
+                        else:
+                            # URL-based response fallback
+                            img_url = img_entry.get("url", "")
+                            if img_url:
+                                async with session.get(img_url) as img_resp:
+                                    if img_resp.status == 200:
+                                        img_bytes = await img_resp.read()
+                                        filename = f"{request.filename_prefix}_{i}_{int(_time.time())}.png"
+                                        filepath = self.output_dir / filename
+                                        filepath.write_bytes(img_bytes)  # ✅ Réel — Sauvegarde sur disque
+                                        generated_paths.append(str(filepath))
+        except Exception as e:
+            logger.error(f"OpenAI DALL-E image generation failed: {e}")
+
+        return GenerationResult(
+            images=generated_paths,
+            model_used="dall-e-3",
+            prompt=prompt,
+        )
+
+    async def _generate_via_diffusers(self, request: GenerationRequest, prompt: str) -> GenerationResult:
+        """✅ Réel — Generate image locally using the diffusers library."""
+        import time as _time
+        generated_paths = []
+
+        try:
+            from diffusers import StableDiffusionPipeline  # ✅ Réel — Import diffusers
+        except ImportError:
+            try:
+                from diffusers import FluxPipeline as StableDiffusionPipeline  # ✅ Réel — Flux pipeline fallback
+            except ImportError:
+                logger.warning(
+                    "⚠️ diffusers library not installed. Install with: pip install diffusers torch"
+                )
+                return GenerationResult(
+                    images=[], model_used="diffusers-local", prompt=prompt,
+                    metadata={"error": "diffusers library not installed"}
+                )
+
+        try:
+            import torch  # ✅ Réel — PyTorch for GPU/CPU inference
+        except ImportError:
+            logger.warning(
+                "⚠️ PyTorch not installed. Install with: pip install torch"
+            )
+            return GenerationResult(
+                images=[], model_used="diffusers-local", prompt=prompt,
+                metadata={"error": "PyTorch not installed"}
+            )
+
+        # Select model based on request
+        if request.model == ImageModel.FLUX_1_PRO or request.model == ImageModel.FLUX_2:
+            model_id = "black-forest-labs/FLUX.1-dev"
+            try:
+                from diffusers import FluxPipeline
+                pipeline_cls = FluxPipeline
+            except ImportError:
+                logger.warning("FluxPipeline not available in diffusers. Falling back to StableDiffusion.")
+                model_id = "stabilityai/stable-diffusion-3-medium"
+                pipeline_cls = StableDiffusionPipeline
+        elif request.model == ImageModel.STABLE_DIFFUSION_3:
+            model_id = "stabilityai/stable-diffusion-3-medium"
+            pipeline_cls = StableDiffusionPipeline
+        else:
+            model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+            pipeline_cls = StableDiffusionPipeline
+
+        # ✅ Réel — Load or reuse cached pipeline
+        if self._diffusers_pipeline is None or self._diffusers_model_id != model_id:
+            logger.info(f"Loading diffusers model: {model_id} (this may take a while on first run)")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            dtype = torch.float16 if device == "cuda" else torch.float32
+            self._diffusers_pipeline = pipeline_cls.from_pretrained(
+                model_id,
+                torch_dtype=dtype,
+            )
+            self._diffusers_pipeline.to(device)  # ✅ Réel — Déplace le modèle sur GPU/CPU
+            self._diffusers_model_id = model_id
+
+        # ✅ Réel — Generate images with the pipeline
+        for i in range(request.num_images):
+            try:
+                generator = None
+                if request.seed is not None:
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                    generator = torch.Generator(device=device).manual_seed(request.seed + i)
+
+                gen_kwargs = {
+                    "prompt": prompt,
+                    "num_inference_steps": 30 if request.quality >= 0.9 else 20,
+                    "generator": generator,
+                }
+                if request.negative_prompt and hasattr(self._diffusers_pipeline, 'call_parameters'):
+                    gen_kwargs["negative_prompt"] = request.negative_prompt
+
+                image_result = self._diffusers_pipeline(**gen_kwargs)
+                image = image_result.images[0]  # ✅ Réel — Image PIL obtenue du modèle
+
+                filename = f"{request.filename_prefix}_{i}_{int(_time.time())}.png"
+                filepath = self.output_dir / filename
+                image.save(str(filepath))  # ✅ Réel — Sauvegarde l'image sur disque
+                generated_paths.append(str(filepath))
+            except Exception as e:
+                logger.error(f"Diffusers failed for image {i}: {e}")
+
+        return GenerationResult(
+            images=generated_paths,
+            model_used=f"diffusers/{model_id}",
+            prompt=prompt,
+        )
+
+    async def generate_local(self, request: GenerationRequest) -> GenerationResult:
+        """Generate image locally using diffusers (no API key needed)."""
+        import time
+        start_time = time.time()
+        enhanced_prompt = self._build_prompt(request)
+        logger.info(f"Generating image locally with diffusers: {enhanced_prompt[:100]}...")
+        result = await self._generate_via_diffusers(request, enhanced_prompt)
+        result.generation_time = time.time() - start_time
+        return result
 
     async def generate_batch(self, prompts: List[str], **kwargs) -> List[GenerationResult]:
         """Generate multiple images in batch."""

@@ -15,11 +15,18 @@ import logging
 import os
 import re
 import secrets
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+try:
+    import httpx  # ✅ Réel
+    _HAS_HTTPX = True
+except ImportError:
+    _HAS_HTTPX = False
 
 logger = logging.getLogger(__name__)
 
@@ -255,22 +262,96 @@ class HealthCheckClient:
         url = f"{self._base_url}:{app_port}{HEALTH_ENDPOINT}"
         headers = {"Authorization": f"Bearer {api_key}"}
 
-        # In production: use httpx or aiohttp
-        # async with httpx.AsyncClient() as client:
-        #     response = await client.get(url, headers=headers, timeout=10.0)
+        if not _HAS_HTTPX:
+            logger.warning("httpx not available; cannot perform real health check")
+            return HealthStatus(
+                api_key=api_key[:8] + "...",
+                app_name="unknown",
+                status="unknown",
+                details={"note": "⚠️ httpx non configuré."},
+            )
 
-        logger.debug("Health check: %s", url)
-        return HealthStatus(
-            api_key=api_key[:8] + "...",
-            app_name="unknown",
-            status="unknown",
-            details={"note": "Health check requires httpx integration"},
-        )
+        start = time.monotonic()  # ✅ Réel
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:  # ✅ Réel
+                response = await client.get(url, headers=headers)  # ✅ Réel
+            elapsed_ms = (time.monotonic() - start) * 1000  # ✅ Réel
+
+            # Try to parse JSON body for app_name and extra details
+            app_name = "unknown"
+            details: dict[str, Any] = {}
+            try:
+                body = response.json()  # ✅ Réel
+                app_name = body.get("app_name", body.get("name", "unknown"))
+                details = {k: v for k, v in body.items() if k not in ("app_name", "name", "status")}
+            except (json.JSONDecodeError, ValueError):
+                details["raw_status_code"] = response.status_code
+
+            status = "healthy" if response.status_code == 200 else "unhealthy"  # ✅ Réel
+            logger.debug("Health check %s → %s (%.1fms)", url, status, elapsed_ms)
+            return HealthStatus(  # ✅ Réel
+                api_key=api_key[:8] + "...",
+                app_name=app_name,
+                status=status,
+                response_time_ms=round(elapsed_ms, 2),
+                details=details,
+            )
+        except httpx.ConnectError:  # ✅ Réel
+            elapsed_ms = (time.monotonic() - start) * 1000
+            logger.debug("Health check %s → connection refused", url)
+            return HealthStatus(
+                api_key=api_key[:8] + "...",
+                app_name="unknown",
+                status="unhealthy",
+                response_time_ms=round(elapsed_ms, 2),
+                details={"error": "connection_refused"},
+            )
+        except httpx.TimeoutException:  # ✅ Réel
+            elapsed_ms = (time.monotonic() - start) * 1000
+            logger.debug("Health check %s → timeout", url)
+            return HealthStatus(
+                api_key=api_key[:8] + "...",
+                app_name="unknown",
+                status="unhealthy",
+                response_time_ms=round(elapsed_ms, 2),
+                details={"error": "timeout"},
+            )
+        except Exception as exc:  # ✅ Réel
+            elapsed_ms = (time.monotonic() - start) * 1000
+            logger.error("Health check %s failed: %s", url, exc)
+            return HealthStatus(
+                api_key=api_key[:8] + "...",
+                app_name="unknown",
+                status="unknown",
+                response_time_ms=round(elapsed_ms, 2),
+                details={"error": str(exc)},
+            )
 
     async def batch_check(self, keys: list[str], port: int = 8000) -> list[HealthStatus]:
         """Run health checks for multiple keys concurrently."""
         tasks = [self.check_health(k, port) for k in keys]
-        return await asyncio.gather(*tasks, return_exceptions=True)  # type: ignore
+        results = await asyncio.gather(*tasks, return_exceptions=True)  # ✅ Réel
+
+        # Convert any exceptions into HealthStatus objects instead of returning raw exceptions
+        health_results: list[HealthStatus] = []  # ✅ Réel
+        for i, result in enumerate(results):
+            if isinstance(result, HealthStatus):  # ✅ Réel
+                health_results.append(result)
+            elif isinstance(result, Exception):
+                health_results.append(HealthStatus(  # ✅ Réel
+                    api_key=keys[i][:8] + "...",
+                    app_name="unknown",
+                    status="unknown",
+                    details={"error": f"{type(result).__name__}: {result}"},
+                ))
+            else:
+                health_results.append(HealthStatus(
+                    api_key=keys[i][:8] + "...",
+                    app_name="unknown",
+                    status="unknown",
+                    details={"error": "unexpected_result_type"},
+                ))
+        return health_results  # ✅ Réel
 
 
 # ── API Injector Facade ──────────────────────────────────────────────────────

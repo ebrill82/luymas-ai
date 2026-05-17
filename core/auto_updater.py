@@ -15,6 +15,8 @@ import json
 import logging
 import os
 import shutil
+import subprocess
+import tempfile
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -218,11 +220,144 @@ class UpdateApplier:
     def _apply_diff(diff_text: str) -> bool:
         """Apply a unified diff to the codebase.
 
-        In production, this would use the patch utility or a Python diff applier.
+        Tries the system ``patch`` command first (fast, reliable).
+        Falls back to a pure-Python inline patch applier if ``patch`` is
+        unavailable.
         """
-        # Simplified: log the diff for manual application
-        logger.info("Diff to apply:\n%s", diff_text[:500])
-        return True
+        if not diff_text or not diff_text.strip():
+            logger.warning("Empty diff — nothing to apply")
+            return False
+
+        # ── Strategy 1: use the ``patch`` command via subprocess ──
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".diff", delete=False) as tmp:  # ✅ Réel
+                tmp.write(diff_text)
+                tmp_path = tmp.name
+
+            result = subprocess.run(  # ✅ Réel
+                ["patch", "-p1", "--forward", "--input", tmp_path],
+                cwd=str(LUYMAS_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            os.unlink(tmp_path)  # ✅ Réel
+
+            if result.returncode == 0:
+                logger.info("Patch applied successfully via `patch` command")  # ✅ Réel
+                return True
+            else:
+                logger.warning(
+                    "`patch` command returned %d: %s",
+                    result.returncode, result.stderr[:300],
+                )
+                # Fall through to Python fallback
+        except FileNotFoundError:
+            logger.info("`patch` command not found; using Python fallback")  # ✅ Réel
+        except subprocess.TimeoutExpired:
+            logger.error("`patch` command timed out")
+            return False
+        except Exception as exc:
+            logger.warning("`patch` command failed: %s; using Python fallback", exc)
+
+        # ── Strategy 2: pure-Python inline diff applier ──
+        try:
+            return UpdateApplier._apply_diff_python(diff_text)  # ✅ Réel
+        except Exception as exc:
+            logger.error("Python diff applier failed: %s", exc)
+            return False
+
+    @staticmethod
+    def _apply_diff_python(diff_text: str) -> bool:
+        """Apply a unified diff using pure Python (fallback when `patch` is unavailable).
+
+        Parses the unified diff, reads the target file, applies the hunks,
+        and writes the result back.
+        """
+        applied_any = False
+        current_file: Optional[str] = None
+        current_lines: list[str] = []
+        hunks: list[dict[str, Any]] = []
+
+        for line in diff_text.splitlines():
+            # Detect file header: --- a/path
+            if line.startswith("--- a/"):
+                # Save previous file's hunks
+                if current_file and hunks:
+                    if UpdateApplier._apply_hunks(current_file, hunks):  # ✅ Réel
+                        applied_any = True
+                    hunks = []
+                current_file = line[6:]  # strip "--- a/"
+                continue
+            if line.startswith("+++ b/"):
+                # We already captured the target from --- line; skip
+                continue
+            # Detect hunk header: @@ -old_start,old_count +new_start,new_count @@
+            if line.startswith("@@"):
+                import re
+                match = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
+                if match:
+                    new_start = int(match.group(1))
+                    new_count = int(match.group(2) or "1")
+                    hunks.append({"new_start": new_start, "new_count": new_count, "lines": []})
+                continue
+            # Hunk content lines
+            if hunks:
+                hunks[-1]["lines"].append(line)
+
+        # Apply last file's hunks
+        if current_file and hunks:
+            if UpdateApplier._apply_hunks(current_file, hunks):  # ✅ Réel
+                applied_any = True
+
+        if applied_any:
+            logger.info("Applied diff via Python fallback")  # ✅ Réel
+        else:
+            logger.warning("No hunks could be applied via Python fallback")
+        return applied_any
+
+    @staticmethod
+    def _apply_hunks(file_rel: str, hunks: list[dict[str, Any]]) -> bool:
+        """Apply parsed hunks to a single file."""
+        target = LUYMAS_ROOT / file_rel
+        if not target.exists():
+            logger.error("Target file not found: %s", target)
+            return False
+
+        try:
+            original = target.read_text(encoding="utf-8").splitlines(keepends=True)  # ✅ Réel
+        except (UnicodeDecodeError, PermissionError) as exc:
+            logger.error("Cannot read %s: %s", target, exc)
+            return False
+
+        # Apply hunks in reverse order so line offsets stay valid
+        result_lines = list(original)
+        for hunk in reversed(hunks):
+            new_start = hunk["new_start"]
+            hunk_lines = hunk["lines"]
+            # Build replacement lines (only "+" lines and context lines)
+            replacement: list[str] = []
+            remove_count = 0
+            for hl in hunk_lines:
+                if hl.startswith("+"):
+                    replacement.append(hl[1:])  # ✅ Réel
+                elif hl.startswith("-"):
+                    remove_count += 1
+                elif hl.startswith(" "):
+                    replacement.append(hl[1:])  # ✅ Réel
+
+            # Replace the affected range in result_lines
+            start_idx = new_start - 1  # Convert 1-based to 0-based
+            end_idx = start_idx + remove_count
+            result_lines[start_idx:end_idx] = replacement  # ✅ Réel
+
+        try:
+            target.write_text("".join(result_lines), encoding="utf-8")  # ✅ Réel
+            logger.info("Wrote patched file: %s", target)
+            return True
+        except (PermissionError, OSError) as exc:
+            logger.error("Cannot write %s: %s", target, exc)
+            return False
 
 
 # ── Change Log ───────────────────────────────────────────────────────────────

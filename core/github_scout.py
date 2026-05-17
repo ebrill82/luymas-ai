@@ -107,33 +107,110 @@ class ProjectSearcher:
 
     async def search_projects(self, query: str, language: Optional[str] = None,
                               stars_min: int = 0, limit: int = 20) -> list[SearchResult]:
-        """Search GitHub repositories matching the query."""
-        params = [
-            ("q", query),
-            ("sort", "stars"),
-            ("order", "desc"),
-            ("per_page", str(min(limit, 100))),
-        ]
+        """Search GitHub repositories matching the query using the REAL GitHub API."""
+        # Build search query string
+        q_parts = [query]
         if language:
-            # Append language to query
-            params[0] = ("q", f"{query} language:{language}")
+            q_parts.append(f"language:{language}")
         if stars_min:
-            params[0] = ("q", f"{params[0][1]} stars:>={stars_min}")
+            q_parts.append(f"stars:>={stars_min}")
+        q_str = " ".join(q_parts)
 
-        # In production: use httpx.AsyncClient
-        # url = f"{GITHUB_API}/search/repositories"
-        # response = await client.get(url, params=params, headers=self._headers)
+        params = {
+            "q": q_str,
+            "sort": "stars",
+            "order": "desc",
+            "per_page": str(min(limit, 100)),
+        }
+
         logger.info("Searching GitHub: query='%s', language=%s, stars>=%d",
                      query, language, stars_min)
 
-        # Return placeholder results
         results: list[SearchResult] = []
+
+        try:
+            import requests  # ✅ Réel
+        except ImportError:
+            logger.warning("requests not installed — cannot search GitHub API")
+            return results
+
+        try:
+            resp = requests.get(  # ✅ Réel
+                f"{GITHUB_API}/search/repositories",
+                params=params,
+                headers=self._headers,
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                data = resp.json()  # ✅ Réel
+                for item in data.get("items", []):  # ✅ Réel
+                    license_info = ""
+                    if item.get("license") and item["license"]:
+                        license_info = item["license"].get("spdx_id", "")
+                    results.append(SearchResult(  # ✅ Réel
+                        repo_url=item.get("html_url", ""),
+                        name=item.get("name", ""),
+                        full_name=item.get("full_name", ""),
+                        description=item.get("description", ""),
+                        language=item.get("language", ""),
+                        stars=item.get("stargazers_count", 0),
+                        forks=item.get("forks_count", 0),
+                        topics=item.get("topics", []),
+                        license=license_info,
+                        last_updated=item.get("updated_at", ""),
+                        score=item.get("score", 0.0),
+                    ))
+                logger.info("GitHub search returned %d results", len(results))  # ✅ Réel
+            else:
+                logger.warning("GitHub API returned status %d: %s",
+                               resp.status_code, resp.text[:200])
+        except Exception as exc:
+            logger.error("GitHub search API call failed: %s", exc)
+
         return results
 
     async def get_repo_info(self, owner: str, repo: str) -> Optional[SearchResult]:
-        """Get detailed info about a specific repository."""
-        # In production: GET /repos/{owner}/{repo}
+        """Get detailed info about a specific repository using the REAL GitHub API."""
         logger.info("Getting repo info: %s/%s", owner, repo)
+
+        try:
+            import requests  # ✅ Réel
+        except ImportError:
+            logger.warning("requests not installed — cannot fetch repo info")
+            return SearchResult(repo_url=f"https://github.com/{owner}/{repo}",
+                                name=repo, full_name=f"{owner}/{repo}")
+
+        try:
+            resp = requests.get(  # ✅ Réel
+                f"{GITHUB_API}/repos/{owner}/{repo}",
+                headers=self._headers,
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                item = resp.json()  # ✅ Réel
+                license_info = ""
+                if item.get("license") and item["license"]:
+                    license_info = item["license"].get("spdx_id", "")
+                return SearchResult(  # ✅ Réel
+                    repo_url=item.get("html_url", f"https://github.com/{owner}/{repo}"),
+                    name=item.get("name", repo),
+                    full_name=item.get("full_name", f"{owner}/{repo}"),
+                    description=item.get("description", ""),
+                    language=item.get("language", ""),
+                    stars=item.get("stargazers_count", 0),
+                    forks=item.get("forks_count", 0),
+                    topics=item.get("topics", []),
+                    license=license_info,
+                    last_updated=item.get("updated_at", ""),
+                    score=0.0,
+                )
+            else:
+                logger.warning("GitHub API returned status %d for %s/%s",
+                               resp.status_code, owner, repo)
+        except Exception as exc:
+            logger.error("GitHub get_repo_info API call failed: %s", exc)
+
+        # Fallback: return minimal info
         return SearchResult(repo_url=f"https://github.com/{owner}/{repo}",
                             name=repo, full_name=f"{owner}/{repo}")
 
@@ -170,7 +247,7 @@ class ProjectAnalyzer:
         return report
 
     async def clone_and_study(self, repo_url: str) -> tuple[Path, AnalysisReport]:
-        """Clone a repository locally and perform deep analysis."""
+        """Clone a repository locally and perform deep analysis using REAL git clone."""
         parts = self._parse_repo_url(repo_url)
         if not parts:
             report = AnalysisReport(repo_url=repo_url, issues=["Invalid URL"])
@@ -179,12 +256,53 @@ class ProjectAnalyzer:
         owner, repo_name = parts
         local_path = CLONE_DIR / f"{owner}_{repo_name}"
 
-        # In production: git clone
-        # proc = await asyncio.create_subprocess_exec(
-        #     "git", "clone", "--depth", "1", repo_url, str(local_path),
-        #     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        # )
+        # Remove existing clone if present for a fresh clone
+        if local_path.exists():
+            shutil.rmtree(local_path, ignore_errors=True)
+
         logger.info("Clone & study: %s -> %s", repo_url, local_path)
+
+        # REAL git clone using asyncio subprocess  # ✅ Réel
+        try:
+            proc = await asyncio.create_subprocess_exec(  # ✅ Réel
+                "git", "clone", "--depth", "1", repo_url, str(local_path),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)  # ✅ Réel
+
+            if proc.returncode == 0:  # ✅ Réel
+                logger.info("Successfully cloned %s to %s", repo_url, local_path)
+            else:
+                err_msg = stderr.decode(errors="ignore").strip() if stderr else "unknown error"
+                logger.warning("git clone failed (rc=%d): %s", proc.returncode, err_msg[:200])
+                if not local_path.exists():
+                    report = AnalysisReport(
+                        repo_url=repo_url, name=repo_name,
+                        issues=[f"git clone failed: {err_msg[:200]}"]
+                    )
+                    return local_path, report
+        except FileNotFoundError:
+            logger.warning("git binary not found — cannot clone")
+            report = AnalysisReport(
+                repo_url=repo_url, name=repo_name,
+                issues=["⚠️ git non installé. Installez git pour le clonage."]
+            )
+            return local_path, report
+        except asyncio.TimeoutError:
+            logger.warning("git clone timed out for %s", repo_url)
+            report = AnalysisReport(
+                repo_url=repo_url, name=repo_name,
+                issues=["git clone timed out after 120s"]
+            )
+            return local_path, report
+        except Exception as exc:
+            logger.error("git clone error: %s", exc)
+            report = AnalysisReport(
+                repo_url=repo_url, name=repo_name,
+                issues=[f"git clone error: {exc}"]
+            )
+            return local_path, report
 
         report = await self._analyze_local(local_path, repo_url, repo_name)
         return local_path, report
@@ -326,15 +444,111 @@ class LicenseChecker:
     COPYLEFT_LICENSES = {LicenseType.GPL3}
 
     def check_license(self, repo_url: str) -> dict[str, Any]:
-        """Check the license of a repository and return compatibility info."""
-        # In production: fetch via GitHub API
+        """Check the license of a repository using the REAL GitHub API."""
+        # Parse owner/repo from URL
+        parts = ProjectAnalyzer._parse_repo_url(repo_url)
+        if not parts:
+            return {
+                "repo_url": repo_url,
+                "license": LicenseType.UNKNOWN.value,
+                "is_permissive": LicenseType.UNKNOWN.is_permissive,
+                "is_safe_to_use": False,
+                "recommendation": "Could not parse repository URL.",
+            }
+
+        owner, repo_name = parts
+
+        try:
+            import requests  # ✅ Réel
+        except ImportError:
+            return {
+                "repo_url": repo_url,
+                "license": LicenseType.UNKNOWN.value,
+                "is_permissive": LicenseType.UNKNOWN.is_permissive,
+                "is_safe_to_use": False,
+                "recommendation": "⚠️ requests non installé. pip install requests",
+            }
+
+        # Fetch license from GitHub API  # ✅ Réel
+        token = os.environ.get("GITHUB_TOKEN", "")
+        headers = {"Accept": "application/vnd.github.v3+json"}
+        if token:
+            headers["Authorization"] = f"token {token}"
+
+        try:
+            resp = requests.get(  # ✅ Réel
+                f"{GITHUB_API}/repos/{owner}/{repo_name}/license",
+                headers=headers,
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                data = resp.json()  # ✅ Réel
+                spdx_id = data.get("license", {}).get("spdx_id", "")  # ✅ Réel
+                license_type = self._map_spdx_to_license(spdx_id)  # ✅ Réel
+                compatibility = self.check_compatibility(license_type)
+                return {
+                    "repo_url": repo_url,
+                    "license": license_type.value,  # ✅ Réel
+                    "license_name": data.get("license", {}).get("name", ""),
+                    "is_permissive": license_type.is_permissive,  # ✅ Réel
+                    "is_safe_to_use": license_type in self.SAFE_LICENSES,  # ✅ Réel
+                    "recommendation": compatibility["recommendation"],  # ✅ Réel
+                }
+            elif resp.status_code == 404:
+                # No LICENSE file found — try the repo endpoint
+                resp2 = requests.get(  # ✅ Réel
+                    f"{GITHUB_API}/repos/{owner}/{repo_name}",
+                    headers=headers,
+                    timeout=15,
+                )
+                if resp2.status_code == 200:
+                    repo_data = resp2.json()  # ✅ Réel
+                    license_info = repo_data.get("license")  # ✅ Réel
+                    if license_info:
+                        spdx_id = license_info.get("spdx_id", "NOASSERTION")
+                        license_type = self._map_spdx_to_license(spdx_id)  # ✅ Réel
+                        compatibility = self.check_compatibility(license_type)
+                        return {
+                            "repo_url": repo_url,
+                            "license": license_type.value,  # ✅ Réel
+                            "license_name": license_info.get("name", ""),
+                            "is_permissive": license_type.is_permissive,  # ✅ Réel
+                            "is_safe_to_use": license_type in self.SAFE_LICENSES,  # ✅ Réel
+                            "recommendation": compatibility["recommendation"],  # ✅ Réel
+                        }
+                return {
+                    "repo_url": repo_url,
+                    "license": LicenseType.UNKNOWN.value,
+                    "is_permissive": LicenseType.UNKNOWN.is_permissive,
+                    "is_safe_to_use": False,
+                    "recommendation": "No license file found. Review repository before use.",
+                }
+            else:
+                logger.warning("GitHub license API returned status %d for %s/%s",
+                               resp.status_code, owner, repo_name)
+        except Exception as exc:
+            logger.error("GitHub license check failed: %s", exc)
+
         return {
             "repo_url": repo_url,
             "license": LicenseType.UNKNOWN.value,
             "is_permissive": LicenseType.UNKNOWN.is_permissive,
             "is_safe_to_use": False,
-            "recommendation": "Could not detect license. Review manually before use.",
+            "recommendation": f"⚠️ GitHub API non configuré: {exc}",
         }
+
+    @staticmethod
+    def _map_spdx_to_license(spdx_id: str) -> LicenseType:
+        """Map an SPDX license identifier to a LicenseType enum."""
+        mapping = {
+            "MIT": LicenseType.MIT,
+            "Apache-2.0": LicenseType.APACHE2,
+            "GPL-3.0": LicenseType.GPL3,
+            "GPL-3.0-or-later": LicenseType.GPL3,
+            "BSD-3-Clause": LicenseType.BSD3,
+            "Unlicense": LicenseType.UNLICENSE,
+        }
+        return mapping.get(spdx_id, LicenseType.UNKNOWN)
 
     def check_compatibility(self, license_type: LicenseType,
                             intended_use: str = "commercial") -> dict[str, Any]:

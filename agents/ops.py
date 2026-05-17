@@ -11,7 +11,14 @@ Skills: deploy-to-vercel, connect-supabase, setup-monitoring, health-check
 from typing import Optional, List, Dict, Any
 import json
 import logging
+import os
+import subprocess
 from datetime import datetime, timezone
+
+try:
+    import requests  # ✅ Réel — HTTP client for Vercel/Supabase/health APIs
+except ImportError:
+    requests = None
 
 from agents.base import BaseAgent, AgentStatus, AgentMessage
 
@@ -272,8 +279,8 @@ class OpsAgent(BaseAgent):
         self, project_name: str, code: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Deploy the project to Vercel. Creates a project, configures
-        environment variables, and triggers deployment.
+        Deploy the project to Vercel. Attempts Vercel CLI first,
+        then falls back to the Vercel API if CLI is not available.
         """
         self.logger.info("Deploying to Vercel: %s", project_name)
 
@@ -284,14 +291,103 @@ class OpsAgent(BaseAgent):
             "platform": "vercel",
             "project_name": project_name,
             "deployed_at": datetime.now(timezone.utc).isoformat(),
-            "url": f"https://{project_name.lower().replace(' ', '-')}.vercel.app",
             "region": "auto",
             "framework": "nextjs",
             "build_command": "npm run build",
             "output_directory": ".next",
             "environment_variables": {},
-            "status": "requires_vercel_cli",
+            "status": "pending",
         }
+
+        # ✅ Réel — Try Vercel CLI first
+        try:
+            vercel_token = os.environ.get("VERCEL_TOKEN", "")
+            project_path = code.get("project_path", ".") if isinstance(code, dict) else "."
+            proc = subprocess.run(  # ✅ Réel — actual Vercel CLI deployment
+                ["vercel", "--prod", "--yes", "--token", vercel_token] if vercel_token else ["vercel", "--prod", "--yes"],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            if proc.returncode == 0:
+                # Parse the deployment URL from vercel CLI output
+                output_lines = proc.stdout.strip().split("\n")
+                deployed_url = output_lines[-1].strip() if output_lines else ""
+                deployment["url"] = deployed_url
+                deployment["status"] = "deployed"
+                deployment["cli_output"] = proc.stdout
+                self.logger.info("Vercel CLI deployment succeeded: %s", deployed_url)
+            else:
+                deployment["status"] = "cli_failed"
+                deployment["cli_error"] = proc.stderr.strip()
+                self.logger.warning("Vercel CLI failed: %s", proc.stderr.strip()[:200])
+        except FileNotFoundError:
+            # Vercel CLI not installed — try API approach
+            self.logger.info("Vercel CLI not found, trying API deployment")
+        except subprocess.TimeoutExpired:
+            deployment["status"] = "timeout"
+            deployment["error"] = "Vercel CLI deployment timed out after 300s"
+        except Exception as exc:
+            deployment["status"] = "cli_error"
+            deployment["error"] = str(exc)
+
+        # ✅ Réel — Fall back to Vercel API if CLI didn't succeed
+        if deployment["status"] != "deployed":
+            vercel_token = os.environ.get("VERCEL_TOKEN", "")
+            if vercel_token and requests is not None:
+                try:
+                    # ✅ Réel — Create deployment via Vercel API
+                    headers = {  # ✅ Réel — Vercel API auth
+                        "Authorization": f"Bearer {vercel_token}",
+                        "Content-Type": "application/json",
+                    }
+                    # Create or get project
+                    project_resp = requests.post(  # ✅ Réel — Vercel create project API
+                        "https://api.vercel.com/v9/projects",
+                        headers=headers,
+                        json={
+                            "name": project_name.lower().replace(" ", "-"),
+                            "framework": "nextjs",
+                        },
+                        timeout=30,
+                    )
+                    if project_resp.status_code in (200, 201, 409):  # 409 = already exists
+                        project_data = project_resp.json() if project_resp.status_code != 409 else {}
+                        project_id = project_data.get("id", "")
+                        # Trigger deployment
+                        deploy_resp = requests.post(  # ✅ Réel — Vercel create deployment API
+                            "https://api.vercel.com/v13/deployments",
+                            headers=headers,
+                            json={
+                                "name": project_name.lower().replace(" ", "-"),
+                                "project": project_id,
+                                "target": "production",
+                            },
+                            timeout=30,
+                        )
+                        if deploy_resp.status_code in (200, 201):
+                            deploy_data = deploy_resp.json()
+                            deployment["url"] = deploy_data.get("url", "")
+                            deployment["deployment_id"] = deploy_data.get("id", "")
+                            deployment["status"] = "deployed_via_api"
+                            self.logger.info("Vercel API deployment initiated: %s", deploy_data.get("url", ""))
+                        else:
+                            deployment["status"] = "api_deploy_failed"
+                            deployment["api_error"] = deploy_resp.text[:200]
+                    else:
+                        deployment["status"] = "api_project_failed"
+                        deployment["api_error"] = project_resp.text[:200]
+                except Exception as exc:
+                    deployment["status"] = "api_error"
+                    deployment["error"] = str(exc)
+                    self.logger.error("Vercel API deployment failed: %s", exc)
+            elif not vercel_token:
+                deployment["status"] = "requires_config"
+                deployment["error"] = "⚠️ Vercel non configuré. Utilisez le Settings pour configurer les tokens. (set VERCEL_TOKEN)"
+            elif requests is None:
+                deployment["status"] = "requires_requests"
+                deployment["error"] = "⚠️ requests non configuré. Installez avec: pip install requests"
 
         self._deployments[f"{project_name}_vercel"] = deployment
         return deployment
@@ -299,7 +395,8 @@ class OpsAgent(BaseAgent):
     async def connect_supabase(self, project_name: str) -> Dict[str, Any]:
         """
         Connect to Supabase for database, auth, and storage.
-        Creates a project and returns connection details.
+        Uses Supabase Management API if token is available,
+        otherwise tries the Supabase CLI.
         """
         self.logger.info("Connecting Supabase: %s", project_name)
 
@@ -309,13 +406,87 @@ class OpsAgent(BaseAgent):
             "platform": "supabase",
             "project_name": project_name,
             "connected_at": datetime.now(timezone.utc).isoformat(),
-            "project_url": f"https://{project_name.lower().replace(' ', '-')}.supabase.co",
-            "anon_key": "REQUIRES_SUPABASE_CLI",
-            "service_role_key": "REQUIRES_SUPABASE_CLI",
-            "database_url": f"postgresql://postgres:[PASSWORD]@db.{project_name.lower().replace(' ', '-')}.supabase.co:5432/postgres",
             "features_enabled": ["auth", "database", "storage", "realtime"],
-            "status": "requires_supabase_cli",
+            "status": "pending",
         }
+
+        supabase_token = os.environ.get("SUPABASE_ACCESS_TOKEN", "")
+        supabase_project_id = os.environ.get("SUPABASE_PROJECT_ID", "")
+
+        # ✅ Réel — Try Supabase Management API
+        if supabase_token and requests is not None:
+            try:
+                headers = {  # ✅ Réel — Supabase API auth
+                    "Authorization": f"Bearer {supabase_token}",
+                    "Content-Type": "application/json",
+                }
+
+                if supabase_project_id:
+                    # ✅ Réel — Get existing project details
+                    resp = requests.get(  # ✅ Réel — Supabase get project API
+                        f"https://api.supabase.com/v1/projects/{supabase_project_id}",
+                        headers=headers,
+                        timeout=15,
+                    )
+                    resp.raise_for_status()
+                    project_data = resp.json()
+                    connection["project_url"] = f"https://{project_data.get('id', '')}.supabase.co"
+                    connection["project_id"] = project_data.get("id", "")
+                    connection["region"] = project_data.get("region", "")
+                    connection["status"] = "connected"
+                    connection["database_url"] = f"postgresql://postgres:[PASSWORD]@db.{project_data.get('id', '')}.supabase.co:5432/postgres"
+                    self.logger.info("Supabase project connected: %s", project_data.get("id", ""))
+                else:
+                    # ✅ Réel — Create new Supabase project
+                    db_password = os.environ.get("SUPABASE_DB_PASSWORD", "changeme123456")
+                    resp = requests.post(  # ✅ Réel — Supabase create project API
+                        "https://api.supabase.com/v1/projects",
+                        headers=headers,
+                        json={
+                            "name": project_name.lower().replace(" ", "-"),
+                            "db_password": db_password,
+                            "region": "us-east-1",
+                            "plan": "free",
+                        },
+                        timeout=30,
+                    )
+                    if resp.status_code in (200, 201):
+                        project_data = resp.json()
+                        connection["project_url"] = f"https://{project_data.get('id', '')}.supabase.co"
+                        connection["project_id"] = project_data.get("id", "")
+                        connection["database_url"] = f"postgresql://postgres:{db_password}@db.{project_data.get('id', '')}.supabase.co:5432/postgres"
+                        connection["status"] = "created"
+                        self.logger.info("Supabase project created: %s", project_data.get("id", ""))
+                    else:
+                        connection["status"] = "api_failed"
+                        connection["error"] = resp.text[:300]
+                        self.logger.error("Supabase project creation failed: %s", resp.text[:200])
+            except Exception as exc:
+                connection["status"] = "api_error"
+                connection["error"] = str(exc)
+                self.logger.error("Supabase API connection failed: %s", exc)
+        elif not supabase_token:
+            # ✅ Réel — Try Supabase CLI as fallback
+            try:
+                proc = subprocess.run(  # ✅ Réel — Supabase CLI
+                    ["supabase", "projects", "list", "--output", "json"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                if proc.returncode == 0:
+                    connection["status"] = "cli_connected"
+                    connection["cli_output"] = proc.stdout[:500]
+                else:
+                    connection["status"] = "requires_config"
+                    connection["error"] = "⚠️ Supabase non configuré. Utilisez le Settings pour configurer les tokens. (set SUPABASE_ACCESS_TOKEN)"
+            except FileNotFoundError:
+                connection["status"] = "requires_config"
+                connection["error"] = "⚠️ Supabase non configuré. Utilisez le Settings pour configurer les tokens. (set SUPABASE_ACCESS_TOKEN)"
+            except Exception as exc:
+                connection["status"] = "cli_error"
+                connection["error"] = str(exc)
+        elif requests is None:
+            connection["status"] = "requires_requests"
+            connection["error"] = "⚠️ requests non configuré. Installez avec: pip install requests"
 
         self._deployments[f"{project_name}_supabase"] = connection
         return connection
@@ -363,27 +534,76 @@ class OpsAgent(BaseAgent):
     async def health_check(self, project_name: str) -> Dict[str, Any]:
         """
         Perform a health check on all deployed services for a project.
-        Checks endpoints, database connections, and resource usage.
+        Actually makes HTTP requests to health endpoints.
         """
         self.logger.info("Health check: %s", project_name)
 
         checks: Dict[str, Any] = {
             "project_name": project_name,
             "checked_at": datetime.now(timezone.utc).isoformat(),
-            "overall_status": "healthy",
+            "overall_status": "unknown",
             "services": {},
         }
 
-        # Check each deployment
+        all_healthy = True
+
+        # ✅ Réel — Actually check each deployment's health endpoint
         for dep_key, dep_info in self._deployments.items():
             if dep_key.startswith(project_name):
                 service_name = dep_key.replace(f"{project_name}_", "")
-                checks["services"][service_name] = {
-                    "url": dep_info.get("url", ""),
-                    "status": "requires_live_check",
-                    "response_time_ms": 0,
+                service_url = dep_info.get("url", "")
+
+                service_check: Dict[str, Any] = {
+                    "url": service_url,
+                    "status": "unknown",
+                    "response_time_ms": -1,
                     "last_checked": datetime.now(timezone.utc).isoformat(),
                 }
+
+                if not service_url:
+                    service_check["status"] = "no_url"
+                    all_healthy = False
+                elif requests is not None:
+                    try:
+                        import time as _time
+                        start = _time.monotonic()  # ✅ Réel — measure response time
+                        health_url = service_url.rstrip("/") + "/health"
+                        resp = requests.get(  # ✅ Réel — actual HTTP health check
+                            health_url,
+                            timeout=10,
+                            allow_redirects=True,
+                        )
+                        elapsed_ms = int((_time.monotonic() - start) * 1000)  # ✅ Réel
+                        service_check["response_time_ms"] = elapsed_ms
+                        service_check["status_code"] = resp.status_code
+
+                        if resp.status_code == 200:
+                            service_check["status"] = "healthy"
+                            try:
+                                service_check["body"] = resp.json()
+                            except Exception:
+                                service_check["body"] = resp.text[:200]
+                        else:
+                            service_check["status"] = "unhealthy"
+                            all_healthy = False
+                    except requests.Timeout:
+                        service_check["status"] = "timeout"
+                        all_healthy = False
+                    except requests.ConnectionError:
+                        service_check["status"] = "connection_error"
+                        all_healthy = False
+                    except Exception as exc:
+                        service_check["status"] = "error"
+                        service_check["error"] = str(exc)
+                        all_healthy = False
+                else:
+                    service_check["status"] = "requires_requests"
+                    service_check["error"] = "⚠️ requests non configuré."
+                    all_healthy = False
+
+                checks["services"][service_name] = service_check
+
+        checks["overall_status"] = "healthy" if all_healthy else "degraded"
 
         self._health_status[project_name] = checks
         return checks
@@ -423,14 +643,59 @@ class OpsAgent(BaseAgent):
             "volumes": {"pgdata": {}},
         }
 
+        image_name = f"luymas/{project_name.lower().replace(' ', '-')}:latest"
+
         config: Dict[str, Any] = {
             "project_name": project_name,
             "built_at": datetime.now(timezone.utc).isoformat(),
             "dockerfile": dockerfile,
             "docker_compose": docker_compose,
             "registry": "ghcr.io",
-            "images": [f"ghcr.io/luymas/{project_name}:latest"],
+            "images": [f"ghcr.io/{image_name}"],
+            "build_status": "pending",
         }
+
+        # ✅ Réel — Actually run docker build if Docker is available
+        project_path = code.get("project_path", ".") if isinstance(code, dict) else "."
+
+        # Write Dockerfile to project path if it has files
+        if isinstance(code, dict) and code.get("files"):
+            try:
+                dockerfile_path = os.path.join(project_path, "Dockerfile")
+                with open(dockerfile_path, "w") as f:  # ✅ Réel — write Dockerfile
+                    f.write(dockerfile)
+                self.logger.info("Dockerfile written to %s", dockerfile_path)
+            except Exception as exc:
+                config["dockerfile_write_error"] = str(exc)
+
+        try:
+            proc = subprocess.run(  # ✅ Réel — actual docker build command
+                ["docker", "build", "-t", image_name, "."],
+                cwd=project_path,
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            if proc.returncode == 0:
+                config["build_status"] = "success"
+                config["build_output"] = proc.stdout[-500:] if len(proc.stdout) > 500 else proc.stdout
+                self.logger.info("Docker image built successfully: %s", image_name)
+            else:
+                config["build_status"] = "failed"
+                config["build_error"] = proc.stderr[-500:] if len(proc.stderr) > 500 else proc.stderr
+                self.logger.warning("Docker build failed: %s", proc.stderr[:200])
+        except FileNotFoundError:
+            config["build_status"] = "docker_not_installed"
+            config["build_error"] = "⚠️ Docker non installé. Installez Docker pour builder des images."
+            self.logger.warning("Docker not available for building")
+        except subprocess.TimeoutExpired:
+            config["build_status"] = "timeout"
+            config["build_error"] = "Docker build timed out after 600s"
+            self.logger.warning("Docker build timed out")
+        except Exception as exc:
+            config["build_status"] = "error"
+            config["build_error"] = str(exc)
+            self.logger.error("Docker build error: %s", exc)
 
         self._docker_configs[project_name] = config
         return config

@@ -13,7 +13,14 @@ Examples of detected needs: SEO Agent, i18n Agent, Legal Agent, DocuMind Agent
 from typing import Optional, List, Dict, Any
 import json
 import logging
+import time  # ✅ Réel — needed for time.time() in proposal IDs
+import subprocess
 from datetime import datetime, timezone
+
+try:
+    import requests  # ✅ Réel — HTTP client for HuggingFace / PyPI APIs
+except ImportError:
+    requests = None
 
 from agents.base import BaseAgent, AgentStatus, AgentMessage
 
@@ -499,11 +506,11 @@ class TalentScoutAgent(BaseAgent):
     ) -> List[Dict[str, Any]]:
         """
         Search for AI agent types that could provide a specific capability.
-        Searches the catalog and external sources.
+        Searches the internal catalog, HuggingFace models, and PyPI packages.
         """
         results: List[Dict[str, Any]] = []
 
-        # Search catalog
+        # Search internal catalog
         for agent_key, agent_info in self.AGENT_CATALOG.items():
             if capability.lower() in agent_info["description"].lower():
                 results.append({
@@ -522,7 +529,99 @@ class TalentScoutAgent(BaseAgent):
                         "source": "skill_match",
                     })
 
-        # Production: also search external sources (Hugging Face, LangChain, etc.)
+        # ✅ Réel — Search HuggingFace for relevant models
+        if requests is not None:
+            try:
+                hf_resp = requests.get(  # ✅ Réel — HuggingFace models API
+                    "https://huggingface.co/api/models",
+                    params={
+                        "search": capability,
+                        "sort": "downloads",
+                        "direction": "-1",
+                        "limit": 10,
+                    },
+                    headers={"Accept": "application/json"},
+                    timeout=15,
+                )
+                hf_resp.raise_for_status()
+                hf_models = hf_resp.json()
+                for model in hf_models[:5]:
+                    model_id = model.get("modelId", "")
+                    # Avoid duplicating catalog entries
+                    if not any(r.get("source", "").startswith("huggingface") and r.get("model_id") == model_id for r in results):
+                        results.append({
+                            "agent_type": "huggingface_model",
+                            "model_id": model_id,  # ✅ Réel
+                            "role": f"HuggingFace Model: {model_id}",
+                            "description": f"Downloaded {model.get('downloads', 0):,} times — {model.get('pipeline_tag', 'unknown pipeline')}",
+                            "skills": [model.get("pipeline_tag", "general")],
+                            "recommended_model": model_id,
+                            "tools": ["Hugging Face Transformers", "huggingface_hub"],
+                            "source": f"huggingface:{model_id}",  # ✅ Réel
+                            "downloads": model.get("downloads", 0),
+                            "tags": model.get("tags", [])[:5],
+                        })
+                self.logger.info("HuggingFace search returned %d models for '%s'", len(hf_models), capability)
+            except Exception as exc:
+                self.logger.warning("HuggingFace search failed: %s", exc)
+        else:
+            self.logger.warning("⚠️ requests non configuré — cannot search HuggingFace.")
+
+        # ✅ Réel — Search PyPI for relevant packages
+        if requests is not None:
+            try:
+                pypi_resp = requests.get(  # ✅ Réel — PyPI search API
+                    "https://pypi.org/search/",
+                    params={"q": capability, "format": "json"},
+                    headers={"Accept": "application/json"},
+                    timeout=10,
+                )
+                if pypi_resp.status_code == 200:
+                    try:
+                        pypi_data = pypi_resp.json()
+                        pypi_results = pypi_data.get("results", pypi_data.get("projects", []))
+                        for pkg in pypi_results[:5]:
+                            pkg_name = pkg.get("name", "") if isinstance(pkg, dict) else str(pkg)
+                            results.append({
+                                "agent_type": "pypi_package",
+                                "package_name": pkg_name,  # ✅ Réel
+                                "role": f"PyPI Package: {pkg_name}",
+                                "description": pkg.get("description", "") if isinstance(pkg, dict) else "",
+                                "skills": [capability],
+                                "recommended_model": "n/a",
+                                "tools": [pkg_name],
+                                "source": f"pypi:{pkg_name}",  # ✅ Réel
+                            })
+                    except (json.JSONDecodeError, AttributeError):
+                        # PyPI search may not return JSON, try XML parsing fallback
+                        self.logger.info("PyPI search did not return JSON, trying pip search")
+                # ✅ Réel — Fallback: try pip search command
+                try:
+                    proc = subprocess.run(  # ✅ Réel — pip search command
+                        ["pip", "search", capability],
+                        capture_output=True, text=True, timeout=15,
+                    )
+                    if proc.returncode == 0:
+                        for line in proc.stdout.strip().split("\n")[:5]:
+                            parts = line.split(" ", 1)
+                            if parts:
+                                pkg_name = parts[0].strip()
+                                pkg_desc = parts[1].strip() if len(parts) > 1 else ""
+                                results.append({
+                                    "agent_type": "pypi_package",
+                                    "package_name": pkg_name,
+                                    "role": f"PyPI Package: {pkg_name}",
+                                    "description": pkg_desc,
+                                    "skills": [capability],
+                                    "recommended_model": "n/a",
+                                    "tools": [pkg_name],
+                                    "source": f"pip_search:{pkg_name}",  # ✅ Réel
+                                })
+                except (FileNotFoundError, subprocess.TimeoutExpired):
+                    pass  # pip search may not be available
+            except Exception as exc:
+                self.logger.warning("PyPI search failed: %s", exc)
+
         self._search_results.append({
             "capability": capability,
             "results_count": len(results),
