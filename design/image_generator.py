@@ -271,7 +271,7 @@ class ImageGenerator:
             tasks.append(self.generate(request))
         return await asyncio.gather(*tasks)
 
-    async def generate_design_assets(self, project_name: str, style: ImageStyle = ImageStyle.MODERN) -> Dict[str, GenerationResult]:
+    async def generate_design_assets(self, project_name: str, style: ImageStyle = ImageStyle.FLAT_DESIGN) -> Dict[str, GenerationResult]:
         """Generate a complete set of design assets for a project."""
         assets = {}
         
@@ -310,7 +310,3 @@ class ImageGenerator:
     def list_generated_images(self) -> List[str]:
         """List all generated images in the output directory."""
         return [str(p) for p in self.output_dir.glob("*.png")]
-
-
-# Style enum addition for design assets
-ImageStyle.MODERN = ImageStyle.FLAT_DESIGN  # Alias
