@@ -429,22 +429,22 @@ def print_hardware_report(info: Optional[Dict[str, Any]] = None) -> str:
 
     report = f"""
 {CYAN}{B}╔══════════════════════════════════════════════╗{R}
-{CYAN}{B}║        🖥️ LUYMAS AI - RAPPORT MATÉRIEL      ║{R}
+{CYAN}{B}║        💎 LUYMAS AI - RAPPORT MATÉRIEL      ║{R}
 {CYAN}{B}╠══════════════════════════════════════════════╣{R}
-{CYAN}{B}║{R} 💻 CPU         : {GREEN}{info['cpu_model']}{R}
+{CYAN}{B}║{R} 💎 CPU         : {GREEN}{info['cpu_model']}{R}
 {CYAN}{B}║{R} 🔢 Cœurs       : {GREEN}{info['cpu_cores']}{R}
 {CYAN}{B}║{R} 🧠 RAM Total   : {GREEN}{info['ram_total_gb']} Go{R}
 {CYAN}{B}║{R} 🧠 RAM Libre   : {GREEN}{info['ram_available_gb']} Go{R}
-{CYAN}{B}║{R} 🎮 GPU         : {GREEN if info['gpu_present'] else RED}{gpu_str}{R}
-{CYAN}{B}║{R} 🎮 Nombre GPU  : {GREEN}{info['gpu_count']}{R}
+{CYAN}{B}║{R} 🔮 GPU         : {GREEN if info['gpu_present'] else RED}{gpu_str}{R}
+{CYAN}{B}║{R} 🔮 Nombre GPU  : {GREEN}{info['gpu_count']}{R}
 {CYAN}{B}║{R} 💾 Disque      : {GREEN}{info['disk_free_gb']} Go libre{R}
 {CYAN}{B}║{R} 🖥️ OS          : {BLUE}{info['os_name']} {info['os_version']}{R}
 {CYAN}{B}╠══════════════════════════════════════════════╣{R}
-{CYAN}{B}║{R} 📊 TIER        : {MAGENTA}{B}{tier.upper()}{R} {tier_info['emoji']}
+{CYAN}{B}║{R} 🔮 TIER        : {MAGENTA}{B}{tier.upper()}{R} {tier_info['emoji']}
 {CYAN}{B}║{R} 📝 Description : {YELLOW}{tier_info['description']}{R}
 {CYAN}{B}║{R} 🔢 Modèles max : {YELLOW}{get_max_models(tier) if get_max_models(tier) != -1 else '∞ (illimité)'}{R}
 {CYAN}{B}╠══════════════════════════════════════════════╣{R}
-{CYAN}{B}║{R} 🧠 Modèles recommandés :{R}
+{CYAN}{B}║{R} 🔷 Modèles recommandés :{R}
 {CYAN}{B}║{R}   Raisonnement : {GREEN}{models.get('reasoning', 'N/A')}{R}
 {CYAN}{B}║{R}   Code         : {GREEN}{models.get('code', 'N/A')}{R}
 {CYAN}{B}║{R}   Design       : {GREEN}{models.get('image', 'N/A')}{R}
@@ -456,22 +456,22 @@ def print_hardware_report(info: Optional[Dict[str, Any]] = None) -> str:
     # Version texte brut (sans ANSI)
     plain_report = f"""
 ╔══════════════════════════════════════════════╗
-║        🖥️ LUYMAS AI - RAPPORT MATÉRIEL      ║
+║        💎 LUYMAS AI - RAPPORT MATÉRIEL      ║
 ╠══════════════════════════════════════════════╣
-║ 💻 CPU         : {info['cpu_model']}
+║ 💎 CPU         : {info['cpu_model']}
 ║ 🔢 Cœurs       : {info['cpu_cores']}
 ║ 🧠 RAM Total   : {info['ram_total_gb']} Go
 ║ 🧠 RAM Libre   : {info['ram_available_gb']} Go
-║ 🎮 GPU         : {gpu_str}
-║ 🎮 Nombre GPU  : {info['gpu_count']}
+║ 🔮 GPU         : {gpu_str}
+║ 🔮 Nombre GPU  : {info['gpu_count']}
 ║ 💾 Disque      : {info['disk_free_gb']} Go libre
 ║ 🖥️ OS          : {info['os_name']} {info['os_version']}
 ╠══════════════════════════════════════════════╣
-║ 📊 TIER        : {tier.upper()} {tier_info['emoji']}
+║ 🔮 TIER        : {tier.upper()} {tier_info['emoji']}
 ║ 📝 Description : {tier_info['description']}
 ║ 🔢 Modèles max : {get_max_models(tier) if get_max_models(tier) != -1 else '∞ (illimité)'}
 ╠══════════════════════════════════════════════╣
-║ 🧠 Modèles recommandés :
+║ 🔷 Modèles recommandés :
 ║   Raisonnement : {models.get('reasoning', 'N/A')}
 ║   Code         : {models.get('code', 'N/A')}
 ║   Design       : {models.get('image', 'N/A')}

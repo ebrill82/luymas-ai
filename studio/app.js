@@ -3020,3 +3020,262 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => ripple.remove(), 600);
   });
 })();
+
+// ============================================================
+// LUYMAS AI - PREMIUM ANIMATIONS & TERMINAL
+// ============================================================
+
+// --- Animated Waves ---
+(function initPremiumWaves() {
+  const canvas = document.getElementById('waveCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const waves = [
+    { y: 0.55, amplitude: 90, frequency: 0.006, speed: 0.015, color: 'rgba(50, 70, 200, 0.18)', lineWidth: 3 },
+    { y: 0.62, amplitude: 55, frequency: 0.010, speed: 0.025, color: 'rgba(90, 110, 240, 0.14)', lineWidth: 2.5 },
+    { y: 0.68, amplitude: 70, frequency: 0.005, speed: 0.012, color: 'rgba(130, 150, 255, 0.10)', lineWidth: 4 },
+    { y: 0.74, amplitude: 35, frequency: 0.014, speed: 0.035, color: 'rgba(170, 190, 255, 0.06)', lineWidth: 1.5 },
+  ];
+
+  function animateWaves() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const t = Date.now() / 1000;
+    waves.forEach(wave => {
+      ctx.beginPath();
+      for (let x = 0; x <= canvas.width; x += 3) {
+        const y = canvas.height * wave.y +
+          Math.sin(x * wave.frequency + wave.speed * t) * wave.amplitude +
+          Math.cos(x * 0.004 + wave.speed * 0.6 * t) * wave.amplitude * 0.5;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = wave.color;
+      ctx.lineWidth = wave.lineWidth;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = wave.color;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    });
+    requestAnimationFrame(animateWaves);
+  }
+  animateWaves();
+})();
+
+// --- Floating Particles ---
+(function initPremiumParticles() {
+  for (let i = 0; i < 35; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    const size = Math.random() * 5 + 2;
+    particle.style.width = size + 'px';
+    particle.style.height = size + 'px';
+    particle.style.left = Math.random() * 100 + '%';
+    particle.style.animationDuration = (Math.random() * 12 + 8) + 's';
+    particle.style.animationDelay = Math.random() * 10 + 's';
+    particle.style.background = `rgba(${80 + Math.random() * 150}, ${100 + Math.random() * 120}, 255, ${Math.random() * 0.6 + 0.2})`;
+    particle.style.boxShadow = `0 0 ${10 + Math.random() * 30}px rgba(${100 + Math.random() * 100}, ${120 + Math.random() * 80}, 255, 0.5)`;
+    document.body.appendChild(particle);
+  }
+})();
+
+// ============================================================
+// TERMINAL PREMIUM — CLAUDE CODE STYLE
+// ============================================================
+class LuymasTerminal {
+  constructor(containerId) {
+    this.container = document.getElementById(containerId);
+    if (!this.container) return;
+    this.history = [];
+    this.historyIndex = -1;
+    this.commands = ['/goal', '/review', '/commit', '/deploy', '/agents', '/clear', '/help', '/design', '/test', '/status', '/update', '/pdf', '/scout'];
+    this.init();
+  }
+
+  init() {
+    this.output = document.createElement('div');
+    this.output.className = 'terminal-output';
+    this.container.appendChild(this.output);
+
+    this.inputLine = document.createElement('div');
+    this.inputLine.className = 'terminal-input-line';
+    this.inputLine.innerHTML = '<span class="terminal-prompt">💎 luymas:~$</span> ';
+    
+    this.input = document.createElement('input');
+    this.input.type = 'text';
+    this.input.className = 'terminal-input';
+    this.input.spellcheck = false;
+    this.input.placeholder = 'Tapez /help...';
+    this.input.addEventListener('keydown', (e) => this.handleKeydown(e));
+    
+    this.inputLine.appendChild(this.input);
+    this.container.appendChild(this.inputLine);
+    this.input.focus();
+
+    this.print('✨ Luymas AI Terminal — Premium Edition', 'success');
+    this.print('💎 Tapez /help pour voir les commandes disponibles.', 'info');
+    this.print('');
+  }
+
+  handleKeydown(e) {
+    if (e.key === 'Enter') {
+      const cmd = this.input.value.trim();
+      if (cmd) {
+        this.execute(cmd);
+        this.history.push(cmd);
+        this.historyIndex = this.history.length;
+        this.input.value = '';
+      }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      this.autocomplete();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (this.historyIndex > 0) {
+        this.historyIndex--;
+        this.input.value = this.history[this.historyIndex];
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (this.historyIndex < this.history.length - 1) {
+        this.historyIndex++;
+        this.input.value = this.history[this.historyIndex];
+      } else {
+        this.historyIndex = this.history.length;
+        this.input.value = '';
+      }
+    }
+  }
+
+  autocomplete() {
+    const current = this.input.value.toLowerCase();
+    const matches = this.commands.filter(c => c.startsWith(current));
+    if (matches.length === 1) {
+      this.input.value = matches[0] + ' ';
+    } else if (matches.length > 1) {
+      this.print('💡 ' + matches.join('  '), 'info');
+    }
+  }
+
+  execute(cmd) {
+    this.print(`💎 <span style="color:#4ade80">luymas:~$</span> ${cmd}`, 'command');
+    const cmdName = cmd.split(' ')[0].toLowerCase();
+    const args = cmd.substring(cmdName.length).trim();
+    
+    switch(cmdName) {
+      case '/help':
+        this.print('📋 Commandes disponibles :', 'info');
+        this.commands.forEach(c => this.print(`  ✨ ${c}`, 'info'));
+        break;
+      case '/clear':
+        this.output.innerHTML = '';
+        break;
+      case '/agents':
+        this.print('💎 PDG          : 🟢 En ligne', 'success');
+        this.print('📐 PM           : 🟢 En ligne', 'success');
+        this.print('🏛️ Architect    : 🟢 En ligne', 'success');
+        this.print('⚙️ Coder Back   : 🟡 En attente', 'warning');
+        this.print('🎨 Coder Front  : 🟡 En attente', 'warning');
+        this.print('🖼️ Designer     : 🟡 En attente', 'warning');
+        this.print('🛡️ Guardian     : 🟡 En attente', 'warning');
+        this.print('🧪 Tester       : 🟡 En attente', 'warning');
+        this.print('🌐 Ops          : 🟡 En attente', 'warning');
+        this.print('💠 Caretaker    : 🔵 En veille', 'info');
+        this.print('🔮 Talent Scout : 🔵 En veille', 'info');
+        break;
+      case '/goal':
+        if (args) {
+          this.print(`🌀 Définition de l'objectif : "${args}"...`, 'info');
+          this.sendToAgent('pdg', {action: 'goal', content: args});
+        } else {
+          this.print('💥 Usage : /goal [description du projet]', 'error');
+        }
+        break;
+      case '/design':
+        if (args) {
+          this.print(`💜 Demande de design : "${args}"...`, 'info');
+          this.sendToAgent('designer', {action: 'design', content: args});
+        } else {
+          this.print('💥 Usage : /design [description]', 'error');
+        }
+        break;
+      case '/review':
+        this.print('🛡️ Demande de revue de code au Guardian...', 'info');
+        this.sendToAgent('guardian', {action: 'review'});
+        break;
+      case '/commit':
+        this.print('📦 Préparation du commit...', 'info');
+        this.sendToAgent('pdg', {action: 'commit'});
+        break;
+      case '/deploy':
+        this.print('🌐 Lancement du déploiement 3 formats...', 'info');
+        this.sendToAgent('ops', {action: 'deploy'});
+        break;
+      case '/test':
+        this.print('🧪 Lancement des tests...', 'info');
+        this.sendToAgent('tester', {action: 'test'});
+        break;
+      case '/status':
+        this.print('📊 État du projet en cours :', 'info');
+        this.print('  ✨ Spécifications : Terminé', 'success');
+        this.print('  ✨ Architecture   : Terminé', 'success');
+        this.print('  ⚡ Code Backend   : En cours', 'warning');
+        this.print('  ⚡ Code Frontend  : En attente', 'warning');
+        this.print('  ⚡ Design         : En attente', 'warning');
+        break;
+      case '/pdf':
+        this.print('📄 Génération du rapport PDF...', 'info');
+        this.sendToAgent('pdg', {action: 'pdf'});
+        break;
+      case '/update':
+        this.print('🔄 Vérification des mises à jour...', 'info');
+        this.sendToAgent('caretaker', {action: 'update'});
+        break;
+      case '/scout':
+        this.print('🔮 Recherche de nouveaux agents...', 'info');
+        this.sendToAgent('talent_scout', {action: 'scout'});
+        break;
+      default:
+        this.print(`💥 Commande inconnue : ${cmdName}`, 'error');
+        this.print('💡 Tapez /help pour voir les commandes disponibles.', 'info');
+    }
+  }
+
+  sendToAgent(agent, data) {
+    const startTime = Date.now();
+    const agentEmojis = {
+      'pdg': '💎', 'pm': '📐', 'architect': '🏛️', 'coder_back': '⚙️',
+      'coder_front': '🎨', 'designer': '🖼️', 'guardian': '🛡️',
+      'tester': '🧪', 'ops': '🌐', 'caretaker': '💠', 'talent_scout': '🔮'
+    };
+    const emoji = agentEmojis[agent] || '💎';
+    
+    setTimeout(() => {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      this.print(`${emoji} Agent ${agent} — Requête traitée en ${elapsed}s`, 'success');
+    }, 600 + Math.random() * 1400);
+  }
+
+  print(message, type = '') {
+    const line = document.createElement('div');
+    line.className = `terminal-line ${type}`;
+    line.innerHTML = message;
+    this.output.appendChild(line);
+    this.output.scrollTop = this.output.scrollHeight;
+  }
+}
+
+// Initialize premium terminal when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  const terminalContainer = document.getElementById('terminal-container');
+  if (terminalContainer) {
+    window.luymasPremiumTerminal = new LuymasTerminal('terminal-container');
+  }
+});

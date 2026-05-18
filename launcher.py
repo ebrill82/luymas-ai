@@ -284,14 +284,14 @@ def charger_modele(nom: str) -> bool:
         )
         if result.returncode == 0 or True:  # ollama run retourne un code non-zéro en mode verbose
             _active_models.append(nom)
-            logger.info("✅ Modèle %s chargé (%d/%d modèles actifs)",
+            logger.info("✨ Modèle %s chargé (%d/%d modèles actifs)",
                        nom, len(_active_models), max_models if max_models != -1 else len(_active_models))
 
             # Afficher la RAM utilisée
             try:
                 import psutil
                 mem = psutil.virtual_memory()
-                logger.info("🧠 RAM utilisée : %.1f Go / %.1f Go (%.0f%%)",
+                logger.info("🔷 RAM utilisée : %.1f Go / %.1f Go (%.0f%%)",
                            (mem.total - mem.available) / (1024**3),
                            mem.total / (1024**3),
                            mem.percent)
@@ -300,11 +300,11 @@ def charger_modele(nom: str) -> bool:
 
             return True
     except subprocess.TimeoutExpired:
-        logger.warning("⚠️ Timeout lors du chargement de %s", nom)
+        logger.warning("⚡ Timeout lors du chargement de %s", nom)
     except FileNotFoundError:
-        logger.warning("⚠️ Ollama non trouvé pour charger %s", nom)
+        logger.warning("⚡ Ollama non trouvé pour charger %s", nom)
     except Exception as e:
-        logger.warning("⚠️ Erreur chargement %s : %s", nom, e)
+        logger.warning("⚡ Erreur chargement %s : %s", nom, e)
 
     return False
 
@@ -334,7 +334,7 @@ def decharger_modeles() -> None:
     for model in list(_active_models):
         decharger_modele(model)
     _active_models.clear()
-    logger.info("🧠 Tous les modèles déchargés — RAM libérée")
+    logger.info("🔷 Tous les modèles déchargés — RAM libérée")
 
 
 def check_and_download_models() -> None:
@@ -558,9 +558,9 @@ def start_orchestrator(app, stop_event: threading.Event) -> None:
             try:
                 agent = create_agent(agent_name)
                 orchestrator.register_agent(agent)
-                logger.info("  ✅ Registered: %s", agent_name)
+                logger.info("  ✨ Registered: %s", agent_name)
             except Exception as e:
-                logger.error("  ❌ Failed to register %s: %s", agent_name, e)
+                logger.error("  💥 Failed to register %s: %s", agent_name, e)
 
         # Store orchestrator in Flask app config for API access
         app.config["ORCHESTRATOR"] = orchestrator
@@ -629,9 +629,9 @@ class LuymasLauncher:
 
         # 4. Détection du matériel et classification du tier
         logger.info("")
-        logger.info("🖥️ Détection du matériel...")
+        logger.info("🔷 Détection du matériel...")
         hw_info, tier = detect_hardware_and_tier()
-        logger.info("📊 Tier de performance : %s", tier)
+        logger.info("🔮 Tier de performance : %s", tier)
         logger.info("")
 
         # 5. Ollama
@@ -670,13 +670,13 @@ class LuymasLauncher:
             from core.hardware_detector import get_max_models
             max_m = get_max_models(tier)
             if max_m == -1:
-                logger.info("🧠 Mode RAM : Illimité (enterprise) — tous les modèles en parallèle")
+                logger.info("🔷 Mode RAM : Illimité (enterprise) — tous les modèles en parallèle")
             elif max_m == 1:
-                logger.info("🧠 Mode RAM : Strict (%s) — UN SEUL modèle à la fois, déchargement après tâche", tier)
+                logger.info("🔷 Mode RAM : Strict (%s) — UN SEUL modèle à la fois, déchargement après tâche", tier)
             else:
-                logger.info("🧠 Mode RAM : %d modèle(s) simultané(s) max (tier: %s)", max_m, tier)
+                logger.info("🔷 Mode RAM : %d modèle(s) simultané(s) max (tier: %s)", max_m, tier)
         except ImportError:
-            logger.info("🧠 Mode RAM : Par défaut (1 modèle à la fois)")
+            logger.info("🔷 Mode RAM : Par défaut (1 modèle à la fois)")
 
         # Start Orchestrator in background thread
         logger.info("Starting Orchestrator in background thread...")
@@ -705,7 +705,7 @@ class LuymasLauncher:
         logger.info("Starting Studio web server on port %d...", STUDIO_PORT)
         logger.info("Studio URL: %s", studio_url)
         logger.info("")
-        logger.info("🚀 Luymas AI is running!")
+        logger.info("🌐 Luymas AI is running!")
         logger.info("   Press Ctrl+C to shut down")
         logger.info("")
 

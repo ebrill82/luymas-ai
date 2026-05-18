@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
 </head>
 <body>
 
@@ -76,29 +76,29 @@
 
       <nav class="tab-nav" role="tablist" aria-label="Main navigation">
         <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true">
-          <span class="tab-icon">🏠</span><span class="tab-label">Dashboard</span>
+          <span class="tab-icon">🪐</span><span class="tab-label">Dashboard</span>
         </button>
         <button class="tab-btn" data-tab="agents" role="tab" aria-selected="false">
-          <span class="tab-icon">🤖</span><span class="tab-label">Agents</span>
+          <span class="tab-icon">💎</span><span class="tab-label">Agents</span>
         </button>
         <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false">
-          <span class="tab-icon">📋</span><span class="tab-label">Projects</span>
+          <span class="tab-icon">📦</span><span class="tab-label">Projects</span>
         </button>
         <button class="tab-btn" data-tab="warroom" role="tab" aria-selected="false">
           <span class="tab-icon">💬</span><span class="tab-label">War Room</span>
           <span class="tab-badge urgent" id="warroom-badge">3</span>
         </button>
         <button class="tab-btn" data-tab="terminal" role="tab" aria-selected="false">
-          <span class="tab-icon">🖥️</span><span class="tab-label">Terminal</span>
+          <span class="tab-icon">💎</span><span class="tab-label">Terminal</span>
         </button>
         <button class="tab-btn" data-tab="design" role="tab" aria-selected="false">
-          <span class="tab-icon">🎨</span><span class="tab-label">Design</span>
+          <span class="tab-icon">💜</span><span class="tab-label">Design</span>
         </button>
         <button class="tab-btn" data-tab="files" role="tab" aria-selected="false">
-          <span class="tab-icon">📁</span><span class="tab-label">Files</span>
+          <span class="tab-icon">📦</span><span class="tab-label">Files</span>
         </button>
         <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false">
-          <span class="tab-icon">⚙️</span><span class="tab-label">Settings</span>
+          <span class="tab-icon">🔷</span><span class="tab-label">Settings</span>
         </button>
       </nav>
 
@@ -133,7 +133,7 @@
             <div class="card glass-card">
               <div class="card-header">
                 <div>
-                  <div class="card-title">🤖 Agent Team</div>
+                  <div class="card-title">💎 Agent Team</div>
                   <div class="card-subtitle">Real-time status of your 11 AI agents</div>
                 </div>
                 <button class="btn btn-sm" onclick="app.switchTab('agents')">View All →</button>
@@ -174,10 +174,10 @@
                     <span class="action-icon">🚀</span> New Project
                   </button>
                   <button class="action-btn" onclick="app.checkModels()">
-                    <span class="action-icon">🧠</span> Check Models
+                    <span class="action-icon">🔷</span> Check Models
                   </button>
                   <button class="action-btn" onclick="app.runDiagnostics()">
-                    <span class="action-icon">🔧</span> Run Diagnostics
+                    <span class="action-icon">💠</span> Run Diagnostics
                   </button>
                   <button class="action-btn" onclick="app.switchTab('warroom')">
                     <span class="action-icon">⚔️</span> Open War Room
@@ -217,7 +217,7 @@
       <section id="tab-agents" class="tab-panel" role="tabpanel" aria-label="Agents">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">🤖 AI Agent Team</h2>
+            <h2 class="panel-title">💎 AI Agent Team</h2>
             <p class="panel-subtitle">11 specialized agents working together to build your vision</p>
           </div>
           <div class="panel-actions">
@@ -239,7 +239,7 @@
       <section id="tab-projects" class="tab-panel" role="tabpanel" aria-label="Projects">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">📋 Projects</h2>
+            <h2 class="panel-title">📦 Projects</h2>
             <p class="panel-subtitle">Manage your software projects from planning to deployment</p>
           </div>
           <button class="btn btn-primary glass-btn" onclick="app.createProjectModal()">+ New Project</button>
@@ -315,6 +315,7 @@
       <!-- ============================================================ -->
       <section id="tab-terminal" class="tab-panel" role="tabpanel" aria-label="Terminal">
         <div class="terminal-wrapper" id="terminal-wrapper">
+          <div id="terminal-container" style="height: 100%;"></div>
           <div class="terminal-toolbar">
             <div class="terminal-toolbar-left">
               <span class="terminal-dot red"></span>
@@ -349,7 +350,7 @@
       <section id="tab-design" class="tab-panel" role="tabpanel" aria-label="Design">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">🎨 Design Studio</h2>
+            <h2 class="panel-title">💜 Design Studio</h2>
             <p class="panel-subtitle">Image generation, design system preview, and inspiration</p>
           </div>
         </div>
@@ -508,7 +509,7 @@
       <section id="tab-files" class="tab-panel" role="tabpanel" aria-label="Project Files">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">📁 Project Files</h2>
+            <h2 class="panel-title">📦 Project Files</h2>
             <p class="panel-subtitle">Browse and manage files generated by agents</p>
           </div>
           <div class="panel-actions">
@@ -558,13 +559,13 @@
           <!-- Settings Navigation -->
           <nav class="settings-nav" aria-label="Settings sections">
             <button class="settings-nav-item active" data-section="models">
-              <span class="snav-icon">🧠</span> Models
+              <span class="snav-icon">🔷</span> Models
             </button>
             <button class="settings-nav-item" data-section="messaging">
               <span class="snav-icon">💬</span> Messaging
             </button>
             <button class="settings-nav-item" data-section="security">
-              <span class="snav-icon">🔒</span> Security
+              <span class="snav-icon">🛡️</span> Security
             </button>
             <button class="settings-nav-item" data-section="email">
               <span class="snav-icon">📧</span> Email
