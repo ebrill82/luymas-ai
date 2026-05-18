@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luymas AI — Architecture Visualization</title>
+<style>
+/* ═══════════════════════════════════════════
+   LIQUID GLASS DESIGN SYSTEM
+   ═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --gold: #FFD700;
+  --purple: #A855F7;
+  --indigo: #6366F1;
+  --cyan: #22D3EE;
+  --pink: #F472B6;
+  --red: #EF4444;
+  --orange: #F97316;
+  --green: #22C55E;
+  --yellow: #FACC15;
+  --white-agent: #E2E8F0;
+  --whatsapp: #25D366;
+  --telegram: #0088CC;
+  --mesh: #7C3AED;
+}
+
+html,body {
+  width:100%;height:100%;overflow:hidden;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:#0a0a2e;color:#e2e8f0;
+}
+
+/* ── Canvas Background ── */
+#waveCanvas {
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;
+}
+
+/* ── Particle Layer ── */
+#particleCanvas {
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;
+}
+
+/* ── Main Container ── */
+.app-container {
+  position:relative;z-index:2;width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;
+  padding:16px;overflow-y:auto;
+}
+
+/* ── Header ── */
+.header {
+  text-align:center;margin-bottom:12px;width:100%;
+  background:rgba(255,255,255,0.04);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;padding:18px 32px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.header h1 {
+  font-size:clamp(1.4rem,3.5vw,2.2rem);font-weight:800;
+  background:linear-gradient(135deg,#FFD700,#A855F7,#22D3EE);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:-0.02em;
+}
+.header p {
+  font-size:0.85rem;color:rgba(255,255,255,0.45);margin-top:4px;
+}
+
+/* ── Visualization Area ── */
+.viz-area {
+  position:relative;width:100%;flex:1;
+  min-height:560px;max-height:720px;
+}
+
+/* SVG connections */
+#connectionsSvg {
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  z-index:1;pointer-events:none;
+}
+
+/* ── Agent Nodes ── */
+.agent-node {
+  position:absolute;z-index:5;
+  display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;transition:transform 0.3s cubic-bezier(.4,0,.2,1),filter 0.3s;
+}
+.agent-node:hover {
+  transform:scale(1.15)!important;filter:brightness(1.2);z-index:10;
+}
+
+.agent-card {
+  width:clamp(64px,10vw,96px);height:clamp(64px,10vw,96px);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:2px solid rgba(255,255,255,0.15);
+  box-shadow:0 0 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.1);
+  position:relative;overflow:hidden;
+  animation:pulse-glow 3s ease-in-out infinite;
+}
+.agent-card::before {
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,rgba(255,255,255,0.15),transparent 70%);
+}
+
+.agent-icon {
+  font-size:clamp(1.5rem,4vw,2.4rem);filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.agent-label {
+  margin-top:6px;font-size:clamp(0.55rem,1.4vw,0.75rem);font-weight:600;
+  text-align:center;white-space:nowrap;
+  text-shadow:0 1px 6px rgba(0,0,0,0.8);
+  color:rgba(255,255,255,0.85);
+}
+
+.agent-role {
+  font-size:clamp(0.45rem,1vw,0.6rem);color:rgba(255,255,255,0.4);
+  text-align:center;white-space:nowrap;
+}
+
+/* PDG special */
+.pdg-node .agent-card {
+  width:clamp(88px,14vw,128px);height:clamp(88px,14vw,128px);
+  border-color:rgba(255,215,0,0.4);
+  box-shadow:0 0 40px rgba(255,215,0,0.2),0 0 80px rgba(168,85,247,0.1),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  animation:pulse-pdg 2.5s ease-in-out infinite;
+}
+.pdg-node .agent-icon { font-size:clamp(2rem,5vw,3.2rem); }
+.pdg-node .agent-label { font-size:clamp(0.7rem,1.8vw,0.95rem); color:var(--gold); }
+
+/* User node */
+.user-node .agent-card {
+  border-color:rgba(255,255,255,0.25);
+  box-shadow:0 0 30px rgba(255,255,255,0.08);
+}
+
+/* ── Knowledge Mesh ── */
+.mesh-container {
+  position:absolute;bottom:2%;left:50%;transform:translateX(-50%);
+  width:80%;max-width:700px;z-index:3;
+  background:rgba(124,58,237,0.06);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(124,58,237,0.2);
+  border-radius:16px;padding:12px 20px;
+  box-shadow:0 4px 24px rgba(124,58,237,0.1);
+  text-align:center;
+}
+.mesh-title {
+  font-size:0.8rem;font-weight:700;color:var(--mesh);
+  text-transform:uppercase;letter-spacing:0.15em;margin-bottom:4px;
+}
+.mesh-desc {
+  font-size:0.65rem;color:rgba(255,255,255,0.4);
+}
+.mesh-pulse {
+  position:absolute;top:0;left:0;right:0;bottom:0;border-radius:16px;
+  background:linear-gradient(90deg,transparent,rgba(124,58,237,0.1),transparent);
+  animation:mesh-sweep 4s ease-in-out infinite;
+}
+
+/* ── Workflow Bar ── */
+.workflow-bar {
+  position:absolute;bottom:calc(2% + 80px);left:50%;transform:translateX(-50%);
+  width:90%;max-width:800px;z-index:3;
+  background:rgba(255,255,255,0.03);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:12px;padding:10px 16px;
+  display:flex;align-items:center;gap:4px;
+  overflow-x:auto;font-size:0.6rem;
+  box-shadow:0 2px 16px rgba(0,0,0,0.2);
+}
+.workflow-step {
+  display:flex;align-items:center;gap:4px;white-space:nowrap;
+  color:rgba(255,255,255,0.5);
+  transition:color 0.3s;cursor:default;
+}
+.workflow-step:hover { color:rgba(255,255,255,0.9); }
+.workflow-arrow {
+  color:rgba(255,255,255,0.2);font-size:0.7rem;
+  animation:arrow-flow 2s ease-in-out infinite;
+}
+
+/* ── Legend ── */
+.legend {
+  position:fixed;bottom:12px;right:12px;z-index:20;
+  background:rgba(10,10,46,0.85);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px;padding:14px 18px;
+  font-size:0.65rem;line-height:1.8;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  max-height:50vh;overflow-y:auto;
+}
+.legend h3 {
+  font-size:0.75rem;margin-bottom:6px;color:rgba(255,255,255,0.7);
+  text-transform:uppercase;letter-spacing:0.1em;
+}
+.legend-item {
+  display:flex;align-items:center;gap:8px;
+}
+.legend-dot {
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+  box-shadow:0 0 6px currentColor;
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;
+  opacity:0;transition:opacity 0.3s;
+}
+.modal-overlay.active { display:flex;opacity:1; }
+
+.modal {
+  background:rgba(15,15,50,0.92);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:24px;padding:32px;
+  max-width:440px;width:90%;
+  box-shadow:0 24px 64px rgba(0,0,0,0.5),0 0 80px rgba(124,58,237,0.1);
+  transform:scale(0.9);transition:transform 0.3s cubic-bezier(.4,0,.2,1);
+}
+.modal-overlay.active .modal { transform:scale(1); }
+
+.modal-icon { font-size:3rem;margin-bottom:12px; }
+.modal-name { font-size:1.4rem;font-weight:700;margin-bottom:4px; }
+.modal-role { font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:16px; }
+.modal-desc { font-size:0.85rem;line-height:1.7;color:rgba(255,255,255,0.7);margin-bottom:20px; }
+.modal-skills { display:flex;flex-wrap:wrap;gap:6px; }
+.modal-skill {
+  font-size:0.7rem;padding:4px 10px;border-radius:20px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  color:rgba(255,255,255,0.6);
+}
+.modal-close {
+  position:absolute;top:16px;right:16px;
+  background:none;border:none;color:rgba(255,255,255,0.4);
+  font-size:1.4rem;cursor:pointer;transition:color 0.2s;
+}
+.modal-close:hover { color:#fff; }
+.modal-wrapper { position:relative; }
+
+/* ── Animations ── */
+@keyframes pulse-glow {
+  0%,100% { box-shadow:0 0 24px rgba(0,0,0,0.4),0 0 0 rgba(255,255,255,0); }
+  50% { box-shadow:0 0 24px rgba(0,0,0,0.4),0 0 16px var(--glow-color,rgba(255,255,255,0.1)); }
+}
+@keyframes pulse-pdg {
+  0%,100% { box-shadow:0 0 40px rgba(255,215,0,0.2),0 0 80px rgba(168,85,247,0.1); }
+  50% { box-shadow:0 0 60px rgba(255,215,0,0.35),0 0 120px rgba(168,85,247,0.2); }
+}
+@keyframes mesh-sweep {
+  0% { transform:translateX(-100%); }
+  100% { transform:translateX(100%); }
+}
+@keyframes arrow-flow {
+  0%,100% { opacity:0.3; }
+  50% { opacity:0.8; }
+}
+@keyframes data-flow {
+  0% { stroke-dashoffset:20; }
+  100% { stroke-dashoffset:0; }
+}
+
+/* ── Connection Lines ── */
+.conn-line {
+  stroke-width:1.5;fill:none;
+  stroke-dasharray:6 4;
+  animation:data-flow 1.5s linear infinite;
+  transition:stroke-width 0.3s,opacity 0.3s;
+}
+.conn-line:hover { stroke-width:3;opacity:1!important; }
+.conn-line-whatsapp { stroke:var(--whatsapp);opacity:0.4; }
+.conn-line-telegram { stroke:var(--telegram);opacity:0.4; }
+.conn-line-workflow { stroke:rgba(255,255,255,0.12);opacity:0.5; }
+.conn-line-mesh { stroke:var(--mesh);opacity:0.15;stroke-dasharray:3 6; }
+.conn-line-pdg { stroke:rgba(255,215,0,0.2);opacity:0.6; }
+
+/* ── Responsive ── */
+@media(max-width:640px) {
+  .legend { display:none; }
+  .workflow-bar { font-size:0.5rem;bottom:calc(1% + 60px);padding:6px 10px; }
+  .mesh-container { padding:8px 12px; }
+  .header { padding:12px 16px; }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1);border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- Wave Background -->
+<canvas id="waveCanvas"></canvas>
+
+<!-- Floating Particles -->
+<canvas id="particleCanvas"></canvas>
+
+<!-- Main App -->
+<div class="app-container">
+  <!-- Header -->
+  <div class="header">
+    <h1>✦ Luymas AI Architecture</h1>
+    <p>Intelligent Agent Orchestration System — Liquid Glass Visualization</p>
+  </div>
+
+  <!-- Visualization Area -->
+  <div class="viz-area" id="vizArea">
+    <!-- SVG Connections -->
+    <svg id="connectionsSvg"></svg>
+
+    <!-- User Node -->
+    <div class="agent-node user-node" id="node-user"
+         style="left:50%;top:2%;transform:translateX(-50%)"
+         data-agent="user">
+      <div class="agent-card" style="--glow-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);">
+        <span class="agent-icon">👤</span>
+      </div>
+      <span class="agent-label">Vous</span>
+      <span class="agent-role">Utilisateur</span>
+    </div>
+
+    <!-- PDG Node (center) -->
+    <div class="agent-node pdg-node" id="node-pdg"
+         style="left:50%;top:28%;transform:translateX(-50%)"
+         data-agent="pdg">
+      <div class="agent-card" style="--glow-color:rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);">
+        <span class="agent-icon">👔</span>
+      </div>
+      <span class="agent-label">PDG</span>
+      <span class="agent-role">Orchestrateur Central</span>
+    </div>
+
+    <!-- Agent Nodes (circle around PDG) -->
+    <div class="agent-node" id="node-pm"
+         data-angle="0" data-agent="pm">
+      <div class="agent-card" style="--glow-color:rgba(168,85,247,0.3);background:rgba(168,85,247,0.06);border-color:rgba(168,85,247,0.25);">
+        <span class="agent-icon">📋</span>
+      </div>
+      <span class="agent-label">PM</span>
+      <span class="agent-role">Chef de Projet</span>
+    </div>
+
+    <div class="agent-node" id="node-architect"
+         data-angle="36" data-agent="architect">
+      <div class="agent-card" style="--glow-color:rgba(99,102,241,0.3);background:rgba(99,102,241,0.06);border-color:rgba(99,102,241,0.25);">
+        <span class="agent-icon">🏛️</span>
+      </div>
+      <span class="agent-label">Architecte</span>
+      <span class="agent-role">Architecture Technique</span>
+    </div>
+
+    <div class="agent-node" id="node-coder_back"
+         data-angle="72" data-agent="coder_back">
+      <div class="agent-card" style="--glow-color:rgba(34,211,238,0.3);background:rgba(34,211,238,0.06);border-color:rgba(34,211,238,0.25);">
+        <span class="agent-icon">⚙️</span>
+      </div>
+      <span class="agent-label">Coder Back</span>
+      <span class="agent-role">Backend Developer</span>
+    </div>
+
+    <div class="agent-node" id="node-coder_front"
+         data-angle="108" data-agent="coder_front">
+      <div class="agent-card" style="--glow-color:rgba(34,211,238,0.3);background:rgba(34,211,238,0.06);border-color:rgba(34,211,238,0.25);">
+        <span class="agent-icon">🎨</span>
+      </div>
+      <span class="agent-label">Coder Front</span>
+      <span class="agent-role">Frontend Developer</span>
+    </div>
+
+    <div class="agent-node" id="node-designer"
+         data-angle="144" data-agent="designer">
+      <div class="agent-card" style="--glow-color:rgba(244,114,182,0.3);background:rgba(244,114,182,0.06);border-color:rgba(244,114,182,0.25);">
+        <span class="agent-icon">🖌️</span>
+      </div>
+      <span class="agent-label">Designer</span>
+      <span class="agent-role">UI/UX Designer</span>
+    </div>
+
+    <div class="agent-node" id="node-guardian"
+         data-angle="180" data-agent="guardian">
+      <div class="agent-card" style="--glow-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.06);border-color:rgba(239,68,68,0.25);">
+        <span class="agent-icon">🛡️</span>
+      </div>
+      <span class="agent-label">Guardian</span>
+      <span class="agent-role">Sécurité & Qualité</span>
+    </div>
+
+    <div class="agent-node" id="node-tester"
+         data-angle="216" data-agent="tester">
+      <div class="agent-card" style="--glow-color:rgba(249,115,22,0.3);background:rgba(249,115,22,0.06);border-color:rgba(249,115,22,0.25);">
+        <span class="agent-icon">🧪</span>
+      </div>
+      <span class="agent-label">Tester</span>
+      <span class="agent-role">QA & Tests</span>
+    </div>
+
+    <div class="agent-node" id="node-ops"
+         data-angle="252" data-agent="ops">
+      <div class="agent-card" style="--glow-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.25);">
+        <span class="agent-icon">🚀</span>
+      </div>
+      <span class="agent-label">Ops</span>
+      <span class="agent-role">DevOps & Déploiement</span>
+    </div>
+
+    <div class="agent-node" id="node-caretaker"
+         data-angle="288" data-agent="caretaker">
+      <div class="agent-card" style="--glow-color:rgba(250,204,21,0.3);background:rgba(250,204,21,0.06);border-color:rgba(250,204,21,0.25);">
+        <span class="agent-icon">🔧</span>
+      </div>
+      <span class="agent-label">Caretaker</span>
+      <span class="agent-role">Maintenance & Support</span>
+    </div>
+
+    <div class="agent-node" id="node-talent_scout"
+         data-angle="324" data-agent="talent_scout">
+      <div class="agent-card" style="--glow-color:rgba(226,232,240,0.2);background:rgba(226,232,240,0.04);border-color:rgba(226,232,240,0.15);">
+        <span class="agent-icon">🔍</span>
+      </div>
+      <span class="agent-label">Talent Scout</span>
+      <span class="agent-role">Veille & Amélioration</span>
+    </div>
+
+    <!-- Workflow Bar -->
+    <div class="workflow-bar">
+      <span class="workflow-step">👤 User</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">👔 PDG</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">📋 PM</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">🏛️ Architect</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">⚙️ Coder Back</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">🎨 Coder Front</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">🛡️ Guardian</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">🧪 Tester</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">🚀 Ops</span>
+      <span class="workflow-arrow">→</span>
+      <span class="workflow-step">🔧 Caretaker</span>
+    </div>
+
+    <!-- Knowledge Mesh -->
+    <div class="mesh-container">
+      <div class="mesh-pulse"></div>
+      <div class="mesh-title">🧠 Knowledge Mesh</div>
+      <div class="mesh-desc">Mémoire partagée — Tous les agents connectés</div>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <h3>🤖 Agents</h3>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--gold);color:var(--gold)"></span>PDG — Orchestrateur</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--purple);color:var(--purple)"></span>PM — Chef de Projet</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--indigo);color:var(--indigo)"></span>Architecte — Technique</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--cyan);color:var(--cyan)"></span>Codeurs — Dev</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--pink);color:var(--pink)"></span>Designer — UI/UX</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--red);color:var(--red)"></span>Guardian — Sécurité</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--orange);color:var(--orange)"></span>Tester — QA</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--green);color:var(--green)"></span>Ops — DevOps</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--yellow);color:var(--yellow)"></span>Caretaker — Support</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--white-agent);color:var(--white-agent)"></span>Talent Scout — Veille</div>
+  <h3 style="margin-top:10px">📡 Canaux</h3>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--whatsapp);color:var(--whatsapp)"></span>WhatsApp</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--telegram);color:var(--telegram)"></span>Telegram</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--mesh);color:var(--mesh)"></span>Knowledge Mesh</div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-wrapper">
+    <div class="modal">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <div class="modal-icon" id="modalIcon"></div>
+      <div class="modal-name" id="modalName"></div>
+      <div class="modal-role" id="modalRole"></div>
+      <div class="modal-desc" id="modalDesc"></div>
+      <div class="modal-skills" id="modalSkills"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  LIQUID GLASS — ANIMATION ENGINE
+// ═══════════════════════════════════════════
+
+// ── Agent Data ──
+const AGENTS = {
+  user: {
+    icon:'👤', name:'Vous', role:'Utilisateur',
+    desc:'Vous êtes le maître du système. Vous donnez des instructions au PDG qui orchestre tous les agents spécialisés pour réaliser vos projets.',
+    skills:['Instructions','Feedback','Validation','Décision finale']
+  },
+  pdg: {
+    icon:'👔', name:'PDG', role:'Orchestrateur Central',
+    desc:'Le PDG est le cerveau de Luymas AI. Il reçoit vos instructions, les analyse, délègue aux agents spécialisés, et coordonne l\'ensemble du workflow de A à Z.',
+    skills:['Orchestration','Délégation','Coordination','Reporting','Décision']
+  },
+  pm: {
+    icon:'📋', name:'PM', role:'Chef de Projet',
+    desc:'Le Project Manager transforme les demandes en spécifications détaillées. Il crée les tickets, gère les priorités et s\'assure que le projet avance selon le planning.',
+    skills:['Spécifications','Planning','Kanban','Priorisation','Jira']
+  },
+  architect: {
+    icon:'🏛️', name:'Architecte', role:'Architecture Technique',
+    desc:'L\'architecte conçoit la structure technique du projet. Il choisit les technologies, définit les patterns, et crée les diagrammes d\'architecture.',
+    skills:['Design System','Stack Technique','Diagrammes','Patterns','Microservices']
+  },
+  coder_back: {
+    icon:'⚙️', name:'Coder Back', role:'Backend Developer',
+    desc:'Le développeur backend implémente la logique serveur, les APIs, les bases de données, et clone les repos pertinents depuis GitHub.',
+    skills:['Python','APIs','Bases de données','Git Clone','Architecture']
+  },
+  coder_front: {
+    icon:'🎨', name:'Coder Front', role:'Frontend Developer',
+    desc:'Le développeur frontend crée les interfaces utilisateur, intègre les designs, et implémente les composants React/Vue avec les maquettes du Designer.',
+    skills:['React','Vue','CSS','TypeScript','Responsive']
+  },
+  designer: {
+    icon:'🖌️', name:'Designer', role:'UI/UX Designer',
+    desc:'Le Designer browse Dribbble et Pinterest via Playwright pour s\'inspirer, génère des images avec Stable Diffusion/FLUX, et crée les maquettes du projet.',
+    skills:['Figma','Dribbble','Stable Diffusion','Playwright','Maquettes']
+  },
+  guardian: {
+    icon:'🛡️', name:'Guardian', role:'Sécurité & Qualité',
+    desc:'Le Guardian audite le code pour les vulnérabilités, vérifie les dépendances, analyse les failles de sécurité, et assure la conformité du projet.',
+    skills:['Audit Sécurité',' OWASP','SAST','Dépendances','Conformité']
+  },
+  tester: {
+    icon:'🧪', name:'Tester', role:'QA & Tests',
+    desc:'Le Tester écrit et exécute les tests unitaires, d\'intégration et end-to-end. Il génère des rapports de couverture et identifie les régressions.',
+    skills:['Pytest','Cypress','Couverture','E2E','Régression']
+  },
+  ops: {
+    icon:'🚀', name:'Ops', role:'DevOps & Déploiement',
+    desc:'L\'agent Ops gère les conteneurs Docker, les pipelines CI/CD, le déploiement sur les serveurs, et la surveillance de l\'infrastructure.',
+    skills:['Docker','CI/CD','Kubernetes','Monitoring','AWS']
+  },
+  caretaker: {
+    icon:'🔧', name:'Caretaker', role:'Maintenance & Support',
+    desc:'Le Caretaker maintient le système en vie : mises à jour automatiques, nettoyage des logs, optimisation des performances, et support utilisateur.',
+    skills:['Auto-update','Logs','Optimisation','Support','Maintenance']
+  },
+  talent_scout: {
+    icon:'🔍', name:'Talent Scout', role:'Veille & Amélioration',
+    desc:'Le Talent Scout scrute HuggingFace et GitHub pour découvrir de nouveaux modèles, bibliothèques et outils qui peuvent améliorer le système.',
+    skills:['HuggingFace','GitHub','Veille','Modèles IA','Bibliothèques']
+  }
+};
+
+// ── Wave Canvas ──
+(function initWaves() {
+  const canvas = document.getElementById('waveCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, time = 0;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function drawWave(yBase, amplitude, wavelength, speed, color1, color2) {
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    for (let x = 0; x <= w; x += 2) {
+      const y = yBase + Math.sin((x / wavelength) + time * speed) * amplitude
+                      + Math.sin((x / wavelength) * 0.5 + time * speed * 0.7) * (amplitude * 0.5);
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, yBase - amplitude, 0, h);
+    grad.addColorStop(0, color1);
+    grad.addColorStop(1, color2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  function animate() {
+    time += 0.008;
+    ctx.clearRect(0, 0, w, h);
+
+    // Base gradient
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+    bgGrad.addColorStop(0, '#0a0a2e');
+    bgGrad.addColorStop(0.5, '#1a1a4e');
+    bgGrad.addColorStop(1, '#2a1a5e');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Waves
+    drawWave(h * 0.55, 30, 300, 0.8, 'rgba(124,58,237,0.06)', 'rgba(10,10,46,0.8)');
+    drawWave(h * 0.65, 25, 250, 1.0, 'rgba(99,102,241,0.05)', 'rgba(10,10,46,0.9)');
+    drawWave(h * 0.78, 20, 200, 1.2, 'rgba(34,211,238,0.04)', 'rgba(10,10,46,0.95)');
+
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ── Particle Canvas ──
+(function initParticles() {
+  const canvas = document.getElementById('particleCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  const particles = [];
+  const COUNT = 50;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < COUNT; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 2 + 0.5,
+      dx: (Math.random() - 0.5) * 0.3,
+      dy: -Math.random() * 0.4 - 0.1,
+      alpha: Math.random() * 0.4 + 0.1,
+      color: ['rgba(124,58,237,','rgba(99,102,241,','rgba(34,211,238,','rgba(255,215,0,'][Math.floor(Math.random()*4)]
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
+    for (const p of particles) {
+      p.x += p.dx;
+      p.y += p.dy;
+      if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+      if (p.x < -10) p.x = w + 10;
+      if (p.x > w + 10) p.x = -10;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + p.alpha + ')';
+      ctx.fill();
+
+      // glow
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + (p.alpha * 0.15) + ')';
+      ctx.fill();
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ── Position Agents in Circle ──
+function positionAgents() {
+  const area = document.getElementById('vizArea');
+  const rect = area.getBoundingClientRect();
+  const cx = rect.width / 2;
+  const cy = rect.height * 0.44; // PDG center Y
+  const radius = Math.min(rect.width * 0.38, rect.height * 0.30, 240);
+
+  const agentNodes = document.querySelectorAll('.agent-node[data-angle]');
+  agentNodes.forEach(node => {
+    const angle = (parseFloat(node.dataset.angle) - 90) * Math.PI / 180;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    node.style.left = x + 'px';
+    node.style.top = y + 'px';
+    node.style.transform = 'translate(-50%, -50%)';
+  });
+}
+
+// ── Draw SVG Connections ──
+function drawConnections() {
+  const svg = document.getElementById('connectionsSvg');
+  const area = document.getElementById('vizArea');
+  svg.setAttribute('viewBox', `0 0 ${area.offsetWidth} ${area.offsetHeight}`);
+  svg.innerHTML = '';
+
+  const nodes = {};
+  document.querySelectorAll('.agent-node').forEach(n => {
+    const id = n.dataset.agent;
+    const r = n.querySelector('.agent-card').getBoundingClientRect();
+    const ar = area.getBoundingClientRect();
+    nodes[id] = {
+      x: r.left - ar.left + r.width / 2,
+      y: r.top - ar.top + r.height / 2
+    };
+  });
+
+  function line(from, to, cls) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg','line');
+    path.setAttribute('x1', from.x);
+    path.setAttribute('y1', from.y);
+    path.setAttribute('x2', to.x);
+    path.setAttribute('y2', to.y);
+    path.classList.add('conn-line', cls);
+    svg.appendChild(path);
+  }
+
+  // User → PDG
+  if (nodes.user && nodes.pdg) line(nodes.user, nodes.pdg, 'conn-line-pdg');
+
+  // PDG → All agents
+  const agentIds = ['pm','architect','coder_back','coder_front','designer','guardian','tester','ops','caretaker','talent_scout'];
+  agentIds.forEach(id => {
+    if (nodes.pdg && nodes[id]) line(nodes.pdg, nodes[id], 'conn-line-pdg');
+  });
+
+  // Workflow chain
+  const workflow = ['pm','architect','coder_back','coder_front','guardian','tester','ops','caretaker'];
+  for (let i = 0; i < workflow.length - 1; i++) {
+    if (nodes[workflow[i]] && nodes[workflow[i+1]]) {
+      line(nodes[workflow[i]], nodes[workflow[i+1]], 'conn-line-workflow');
+    }
+  }
+
+  // Messenger connections (WhatsApp/Telegram)
+  if (nodes.pdg && nodes.caretaker) line(nodes.pdg, nodes.caretaker, 'conn-line-whatsapp');
+  if (nodes.pdg && nodes.ops) line(nodes.pdg, nodes.ops, 'conn-line-telegram');
+
+  // Knowledge Mesh → All agents
+  const meshEl = document.querySelector('.mesh-container');
+  if (meshEl) {
+    const mr = meshEl.getBoundingClientRect();
+    const ar = area.getBoundingClientRect();
+    const meshCenter = { x: mr.left - ar.left + mr.width / 2, y: mr.top - ar.top };
+    agentIds.forEach(id => {
+      if (nodes[id]) line(meshCenter, nodes[id], 'conn-line-mesh');
+    });
+  }
+}
+
+// ── Modal System ──
+const overlay = document.getElementById('modalOverlay');
+const modalClose = document.getElementById('modalClose');
+
+document.querySelectorAll('.agent-node').forEach(node => {
+  node.addEventListener('click', () => {
+    const key = node.dataset.agent;
+    const agent = AGENTS[key];
+    if (!agent) return;
+
+    document.getElementById('modalIcon').textContent = agent.icon;
+    document.getElementById('modalName').textContent = agent.name;
+    document.getElementById('modalRole').textContent = agent.role;
+    document.getElementById('modalDesc').textContent = agent.desc;
+
+    const skillsDiv = document.getElementById('modalSkills');
+    skillsDiv.innerHTML = '';
+    agent.skills.forEach(s => {
+      const span = document.createElement('span');
+      span.className = 'modal-skill';
+      span.textContent = s;
+      skillsDiv.appendChild(span);
+    });
+
+    overlay.classList.add('active');
+  });
+});
+
+modalClose.addEventListener('click', () => overlay.classList.remove('active'));
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) overlay.classList.remove('active');
+});
+
+// ── Ripple Effect on Click ──
+document.querySelectorAll('.agent-card').forEach(card => {
+  card.addEventListener('click', function(e) {
+    const ripple = document.createElement('span');
+    const rect = this.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.cssText = `
+      position:absolute;border-radius:50%;
+      width:${size}px;height:${size}px;
+      left:${e.clientX - rect.left - size/2}px;
+      top:${e.clientY - rect.top - size/2}px;
+      background:rgba(255,255,255,0.3);
+      transform:scale(0);animation:ripple-anim 0.6s ease-out;
+      pointer-events:none;
+    `;
+    this.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  });
+});
+
+// Inject ripple animation
+const rippleStyle = document.createElement('style');
+rippleStyle.textContent = `@keyframes ripple-anim { to { transform:scale(4);opacity:0; } }`;
+document.head.appendChild(rippleStyle);
+
+// ── Init ──
+window.addEventListener('load', () => {
+  positionAgents();
+  setTimeout(drawConnections, 100);
+});
+
+window.addEventListener('resize', () => {
+  positionAgents();
+  setTimeout(drawConnections, 50);
+});
+</script>
+</body>
+</html>
