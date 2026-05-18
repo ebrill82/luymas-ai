@@ -1,0 +1,9 @@
+[autorun]
+open=start.bat
+icon=luymas-ai\studio\favicon.ico
+label=Luymas AI Portable
+
+[Content]
+MusicFiles=false
+PictureFiles=false
+VideoFiles=false

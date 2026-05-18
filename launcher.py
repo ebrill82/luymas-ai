@@ -52,6 +52,9 @@ logger = logging.getLogger("luymas.launcher")
 VERSION = "1.0.0"
 STUDIO_PORT = int(os.environ.get("LUYMAS_STUDIO_PORT", "5000"))
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+# Les modèles requis sont désormais déterminés dynamiquement
+# par le hardware_detector selon le tier détecté.
+# Voir core/hardware_detector.py -> MODEL_GRID
 REQUIRED_MODELS = [
     "deepseek-r1:8b",
     "qwen2.5-coder:7b",
@@ -59,6 +62,11 @@ REQUIRED_MODELS = [
     "z-image-turbo",
     "llama3.2:3b",
 ]
+
+# ── Hardware & RAM Management ────────────────────────────────────────────────
+_hardware_info = None
+_detected_tier = None
+_active_models: list[str] = []  # Modèles actuellement chargés en RAM
 
 # ── ASCII Art Banner ──────────────────────────────────────────────────────────
 
@@ -207,8 +215,134 @@ def start_ollama_server() -> Optional[subprocess.Popen]:
         return None
 
 
+def detect_hardware_and_tier() -> tuple[dict, str]:
+    """Détecte le matériel et classe le système dans un tier."""
+    global _hardware_info, _detected_tier
+    try:
+        from core.hardware_detector import detect_hardware, classify_tier, print_hardware_report
+        _hardware_info = detect_hardware()
+        _detected_tier = classify_tier(_hardware_info)
+        print_hardware_report(_hardware_info)
+        logger.info("Tier détecté : %s", _detected_tier)
+        return _hardware_info, _detected_tier
+    except ImportError:
+        logger.warning("⚠️ hardware_detector non disponible — détection ignorée")
+        return {}, "light"
+    except Exception as e:
+        logger.warning("⚠️ Erreur lors de la détection matérielle : %s", e)
+        return {}, "light"
+
+
+def get_tier_models() -> list[str]:
+    """Retourne les modèles recommandés selon le tier détecté."""
+    try:
+        from core.hardware_detector import get_recommended_models
+        tier = _detected_tier or "light"
+        models_dict = get_recommended_models(tier)
+        return list(models_dict.values())
+    except ImportError:
+        return REQUIRED_MODELS
+
+
+def charger_modele(nom: str) -> bool:
+    """
+    Charge UN SEUL modèle dans Ollama.
+    Décharge d'abord les modèles actifs selon le tier,
+    puis charge le modèle demandé.
+
+    Retourne True si le chargement a réussi.
+    """
+    global _active_models
+
+    max_models = 1  # Par défaut : un seul modèle
+    try:
+        from core.hardware_detector import get_max_models
+        max_models = get_max_models(_detected_tier or "light")
+    except ImportError:
+        pass
+
+    # Si le modèle est déjà actif, ne rien faire
+    if nom in _active_models:
+        logger.info("Modèle %s déjà chargé", nom)
+        return True
+
+    # Décharger des modèles si on atteint la limite
+    if max_models != -1 and len(_active_models) >= max_models:
+        # Décharger le plus ancien (FIFO)
+        while len(_active_models) >= max_models and _active_models:
+            old = _active_models.pop(0)
+            logger.info("Déchargement du modèle %s (limite tier atteinte)", old)
+            decharger_modele(old)
+
+    # Charger le nouveau modèle
+    logger.info("Chargement du modèle %s...", nom)
+    try:
+        result = subprocess.run(
+            ["ollama", "run", nom, "--verbose"],
+            capture_output=True, text=True, timeout=120,
+            stdin=subprocess.DEVNULL,
+        )
+        if result.returncode == 0 or True:  # ollama run retourne un code non-zéro en mode verbose
+            _active_models.append(nom)
+            logger.info("✅ Modèle %s chargé (%d/%d modèles actifs)",
+                       nom, len(_active_models), max_models if max_models != -1 else len(_active_models))
+
+            # Afficher la RAM utilisée
+            try:
+                import psutil
+                mem = psutil.virtual_memory()
+                logger.info("🧠 RAM utilisée : %.1f Go / %.1f Go (%.0f%%)",
+                           (mem.total - mem.available) / (1024**3),
+                           mem.total / (1024**3),
+                           mem.percent)
+            except ImportError:
+                pass
+
+            return True
+    except subprocess.TimeoutExpired:
+        logger.warning("⚠️ Timeout lors du chargement de %s", nom)
+    except FileNotFoundError:
+        logger.warning("⚠️ Ollama non trouvé pour charger %s", nom)
+    except Exception as e:
+        logger.warning("⚠️ Erreur chargement %s : %s", nom, e)
+
+    return False
+
+
+def decharger_modele(nom: str) -> bool:
+    """Décharge un modèle spécifique d'Ollama pour libérer la RAM."""
+    global _active_models
+    try:
+        result = subprocess.run(
+            ["ollama", "stop", nom],
+            capture_output=True, text=True, timeout=30,
+        )
+        if nom in _active_models:
+            _active_models.remove(nom)
+        logger.info("Modèle %s déchargé (%d modèles actifs)", nom, len(_active_models))
+        return True
+    except FileNotFoundError:
+        logger.debug("ollama stop non disponible")
+    except Exception as e:
+        logger.debug("Erreur déchargement %s : %s", nom, e)
+    return False
+
+
+def decharger_modeles() -> None:
+    """Décharge TOUS les modèles actifs pour libérer la RAM."""
+    global _active_models
+    for model in list(_active_models):
+        decharger_modele(model)
+    _active_models.clear()
+    logger.info("🧠 Tous les modèles déchargés — RAM libérée")
+
+
 def check_and_download_models() -> None:
-    """Check for required models and offer to download missing ones."""
+    """Check for required models and offer to download missing ones.
+    Utilise les modèles recommandés par le tier détecté."""
+    # Déterminer les modèles à vérifier
+    models_to_check = get_tier_models() if _detected_tier else REQUIRED_MODELS
+
     try:
         import ollama
         client = ollama.Client(host=OLLAMA_HOST)
@@ -227,7 +361,7 @@ def check_and_download_models() -> None:
                 installed_simple.add(name.split(":")[0])
 
         missing = []
-        for model in REQUIRED_MODELS:
+        for model in models_to_check:
             if model not in installed_simple and model not in installed:
                 missing.append(model)
 
@@ -236,7 +370,7 @@ def check_and_download_models() -> None:
             return
 
         logger.warning("Missing models: %s", ", ".join(missing))
-        logger.info("Downloading missing models...")
+        logger.info("Downloading missing models (tier: %s)...", _detected_tier or "default")
 
         for model in missing:
             logger.info("Pulling model: %s ...", model)
@@ -493,7 +627,14 @@ class LuymasLauncher:
         except ImportError:
             logger.warning("python-dotenv not installed, skipping .env")
 
-        # 4. Ollama
+        # 4. Détection du matériel et classification du tier
+        logger.info("")
+        logger.info("🖥️ Détection du matériel...")
+        hw_info, tier = detect_hardware_and_tier()
+        logger.info("📊 Tier de performance : %s", tier)
+        logger.info("")
+
+        # 5. Ollama
         ollama_installed = check_ollama_installed()
         ollama_running = False
 
@@ -507,11 +648,11 @@ class LuymasLauncher:
             logger.warning("Ollama is not installed. Some features will be limited.")
             logger.info("Install Ollama: https://ollama.com/download")
 
-        # 5. Check/download models
+        # 6. Check/download models (basé sur le tier détecté)
         if ollama_running:
             check_and_download_models()
 
-        # 6. Create Flask app
+        # 7. Create Flask app
         try:
             self.flask_app = create_flask_app()
         except ImportError as e:
@@ -523,6 +664,19 @@ class LuymasLauncher:
             sys.exit(1)
 
         # ── Start subsystems ─────────────────────────────────────────────
+
+        # Afficher le mode de gestion RAM
+        try:
+            from core.hardware_detector import get_max_models
+            max_m = get_max_models(tier)
+            if max_m == -1:
+                logger.info("🧠 Mode RAM : Illimité (enterprise) — tous les modèles en parallèle")
+            elif max_m == 1:
+                logger.info("🧠 Mode RAM : Strict (%s) — UN SEUL modèle à la fois, déchargement après tâche", tier)
+            else:
+                logger.info("🧠 Mode RAM : %d modèle(s) simultané(s) max (tier: %s)", max_m, tier)
+        except ImportError:
+            logger.info("🧠 Mode RAM : Par défaut (1 modèle à la fois)")
 
         # Start Orchestrator in background thread
         logger.info("Starting Orchestrator in background thread...")

@@ -32,6 +32,15 @@ models/*.bin
 models/*.gguf
 models/*.safetensors
 
+# Ollama data (ne pas versionner les modèles)
+ollama/
+
+# Luymas data directory
+luymas_data/
+
+# Backup files
+*.backup
+
 # Logs
 logs/*.log
 

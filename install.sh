@@ -81,7 +81,18 @@ ask_yes_no() {
 # STEP 1: DETECT ENVIRONMENT
 # ============================================================
 detect_environment() {
-    print_step "STEP 1: Environment Detection"
+    print_step "STEP 1: Environment Detection & Hardware"
+
+    # ── Hardware Detection via Python ──
+    if command -v python3 &>/dev/null; then
+        print_info "Détection automatique du matériel..."
+        python3 -c "from core.hardware_detector import detect_hardware, classify_tier, print_hardware_report; print_hardware_report()" 2>/dev/null
+        if [ $? -ne 0 ]; then
+            print_warning "Détection matérielle avancée non disponible"
+            print_info "Installez psutil : pip install psutil"
+        fi
+        echo ""
+    fi
 
     # OS Detection
     OS="$(uname -s)"

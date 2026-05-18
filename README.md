@@ -254,6 +254,71 @@ Detects when the team needs a new member:
 
 ---
 
+## 💾 Version Portable USB
+
+Luymas AI peut être installé sur une clé USB pour une utilisation nomade, sans installation permanente sur l'ordinateur.
+
+### Préparation de la clé USB
+
+```bash
+# Insérez une clé USB (minimum 10 Go libre)
+python core/usb_builder.py D:           # Windows
+python core/usb_builder.py /media/usb   # Linux
+
+# Options :
+python core/usb_builder.py D: --skip-models    # Sans les modèles IA
+python core/usb_builder.py D: --skip-python     # Sans Python portable
+python core/usb_builder.py D: --skip-ollama     # Sans Ollama
+```
+
+### Utilisation
+
+1. **Branchez** la clé USB sur n'importe quel PC Windows
+2. **Double-cliquez** sur `start.bat` à la racine de la clé
+3. Ollama est **téléchargé automatiquement** si absent
+4. Le Studio s'ouvre dans le navigateur à `http://localhost:5000`
+5. **Ne retirez pas** la clé pendant l'utilisation
+
+### Contenu de la clé
+
+```
+USB_ROOT/
+├── start.bat              # Script de démarrage portable
+├── autorun.inf            # Lancement automatique Windows
+├── README_USB.txt         # Instructions utilisateur
+├── luymas-ai/             # Projet complet
+├── python_portable/       # Python portable (optionnel)
+└── ollama_portable/       # Ollama installateur (optionnel)
+```
+
+### Configuration recommandée
+
+| Minimum | Recommandé |
+|---------|------------|
+| Windows 10 (64 bits) | Windows 11 |
+| 8 Go RAM | 16 Go RAM |
+| 10 Go espace libre | 30 Go espace libre |
+| Clé USB 3.0 | Clé USB 3.1+ |
+
+---
+
+## 📸 Aperçu du Studio
+
+> 🎨 **Visualisation de l'architecture** — Ouvrez `studio/architecture.html` pour une visualisation interactive en **Liquid Glass** de tous les agents et du workflow.
+
+| Vue | Description |
+|-----|-------------|
+| 🏠 **Dashboard** | Vue d'ensemble du système, statut des agents, activité en temps réel |
+| 🤖 **Agents** | Contrôle individuel de chaque agent (start/stop/pause) |
+| 📋 **Projects** | Gestion complète des projets, pipeline de déploiement |
+| 💬 **War Room** | Messagerie en temps réel avec les agents |
+| 🖥️ **Terminal** | Console en temps réel avec filtrage des logs |
+| 🎨 **Design** | Galerie d'images, génération IA, tendances design |
+| 📁 **Files** | Explorateur de fichiers avec coloration syntaxique |
+| ⚙️ **Settings** | Configuration complète du système |
+
+---
+
 ## 📥 Téléchargement direct
 
 ### Binaires pré-compilés
@@ -465,50 +530,63 @@ Complete listing of 16+ models across 4 categories (reasoning, coding, image, re
 
 ## 💻 Hardware Requirements
 
-Luymas AI supports 5 hardware tiers, from a basic 8GB sandbox to a multi-GPU powerhouse:
+Luymas AI détecte automatiquement votre matériel et sélectionne les modèles adaptés grâce au **Hardware Detector** (`core/hardware_detector.py`).
 
-| Tier | RAM | GPU | Concurrent Models | Disk | Best Reasoning | Best Coding | Best Image |
-|------|-----|-----|-------------------|------|---------------|-------------|------------|
-| **1** 🟢 | 8 GB | None | 1 | ~25 GB | `deepseek-r1:8b` | `qwen2.5-coder:7b` | `z-image-turbo` |
-| **2** 🟡 | 16 GB | None | 1–2 | ~50 GB | `deepseek-r1:14b` | `qwen2.5-coder:7b` | `z-image-turbo` |
-| **3** 🟠 | 32 GB | 12 GB VRAM | 2 | ~80 GB | `qwen3:30b` | `qwen2.5-coder:32b` | `flux2-schnell` |
-| **4** 🔴 | 64 GB | 24 GB VRAM | 3 | ~150 GB | `qwen3.5` | `qwen2.5-coder:32b` | `flux2-dev` |
-| **5** 🟣 | 128 GB+ | 48 GB+ VRAM | 4 | ~500 GB+ | `deepseek-v4-pro` | `kimi-k2.5` | `flux2-dev` |
+### 🖥️ Détection Automatique du Matériel
 
-### Tier 1 — Sandbox (8 GB RAM, No GPU)
-
-> **Default for development and testing**
+Au lancement, le système affiche un rapport complet :
 
 ```
-Strategy: Run one model at a time, swap as needed
-Orchestrator  → deepseek-r1:8b    (transparent chain-of-thought)
-Coder         → qwen2.5-coder:7b  (84.1% HumanEval)
-Designer      → z-image-turbo     (photorealistic, bilingual)
+╔══════════════════════════════════════════════╗
+║        🖥️ LUYMAS AI - RAPPORT MATÉRIEL      ║
+╠══════════════════════════════════════════════╣
+║ 💻 CPU         : AMD Ryzen 9 5950X
+║ 🧠 RAM Total   : 64.0 Go
+║ 🧠 RAM Libre   : 42.3 Go
+║ 🎮 GPU         : NVIDIA RTX 4090 (24.0 Go VRAM)
+║ 💾 Disque      : 850.2 Go libre
+╠══════════════════════════════════════════════╣
+║ 📊 TIER        : PRO 🔴
+║ 📝 Description : Station pro, 64-96 Go RAM, GPU 24 Go+
+║ 🔢 Modèles max : 3
+╠══════════════════════════════════════════════╣
+║ 🧠 Modèles recommandés :
+║   Raisonnement : qwen3.6:72b
+║   Code         : deepseek-v4:70b
+║   Design       : flux.1-pro-max
+║   Rapide       : qwen3.6:30b
+╚══════════════════════════════════════════════╝
 ```
 
-### Tier 3 — Sweet Spot (32 GB RAM + 12 GB VRAM GPU)
+### Grille de Tiers
 
-> **Best quality-to-cost ratio for production use**
+Luymas AI supports 6 hardware tiers, from a basic 8GB sandbox to a multi-GPU data center:
 
-```
-Strategy: GPU handles one model; CPU runs smaller models simultaneously
-Orchestrator  → qwen3:30b           (86% MMLU, GPU-accelerated)
-Coder         → qwen2.5-coder:32b   (92.7% HumanEval)
-Designer      → flux2-schnell       (best open-source image gen)
-Communicator  → gemma4:26b          (85 tokens/s)
-```
+| Tier | RAM | GPU | Modèles Simultanés | Raisonnement | Code | Design | Rapide |
+|------|-----|-----|-------------------|-------------|------|--------|--------|
+| **ultra-light** 🟢 | 8-12 Go | Aucun | 1 | `gemma3:4b` | `qwen2.5-coder:3b` | `z-image-turbo` | `llama3.2:3b` |
+| **light** 🟡 | 16-24 Go | Aucun | 1 | `deepseek-r1:8b` | `qwen2.5-coder:7b` | `stable-diffusion-3-medium` | `gemma3:4b` |
+| **standard** 🟠 | 32-48 Go | Optionnel | 2 | `qwen3.6:30b` | `deepseek-v4:16b` | `flux.1-pro` | `llama3.3:8b` |
+| **pro** 🔴 | 64-96 Go | 24 Go+ VRAM | 3 | `qwen3.6:72b` | `deepseek-v4:70b` | `flux.1-pro-max` | `qwen3.6:30b` |
+| **ultra** 🟣 | 128-192 Go | 48 Go+ VRAM | 4 | `kimi-k2.6` | `deepseek-v4-pro` | `flux.1-ultra` | `qwen3.6:72b` |
+| **enterprise** 💎 | 256 Go+ | Multi-GPU 80 Go+ | ∞ | `glm-5.1` | `deepseek-v4-pro-x4` | `flux.1-ultra-x2` | `all-parallel` |
 
-### Tier 5 — Premium (128 GB+ RAM + Multi-GPU)
+### 🧠 Gestion Intelligente de la RAM
 
-> **Frontier-level quality, always-loaded models**
+Le système gère automatiquement les modèles chargés en RAM selon le tier :
 
-```
-Strategy: Multi-GPU with model parallelism, Communicator always loaded
-Orchestrator  → deepseek-v4-pro   (91.2% MMLU, frontier reasoning)
-Coder         → kimi-k2.5         (99% HumanEval, strongest coding)
-Designer      → flux2-dev          (maximum image quality)
-QA            → deepseek-r1:671b  (full R1 for testing)
-```
+| Tier | Stratégie |
+|------|-----------|
+| ultra-light / light | **1 modèle à la fois** — déchargement après chaque tâche |
+| standard | **2 modèles max** — ex: code + raisonnement |
+| pro | **3 modèles max** — raisonnement + code + rapide |
+| ultra | **4 modèles max** |
+| enterprise | **Tous en parallèle** — illimité |
+
+Fonctions disponibles :
+- `charger_modele(nom)` — Charge un modèle, décharge les anciens si limite atteinte
+- `decharger_modele(nom)` — Décharge un modèle spécifique
+- `decharger_modeles()` — Décharge tous les modèles
 
 ---
 
@@ -520,6 +598,9 @@ luymas-ai/
 ├── main.py                     # 📟 CLI entry point (interactive mode)
 ├── install.sh                  # 📦 Linux/macOS installation script
 ├── install.bat                 # 📦 Windows installation script
+├── start.bat                   # 💾 USB portable startup script
+├── autorun.inf                 # 💾 USB auto-run configuration
+├── README_USB.txt              # 💾 USB portable user instructions
 ├── launcher.bat                # 🪟 Windows quick-start
 ├── build_exe.py                # 🔨 PyInstaller build script
 ├── build_windows_exe.py        # 🪟 Windows .exe cross-compilation
@@ -560,7 +641,9 @@ luymas-ai/
 │   ├── experience_learner.py   #    Learning by Experience
 │   ├── email_factory.py        #    Email Creation for Agents
 │   ├── captcha_solver.py       #    Anti-Captcha System
-│   └── identity_manager.py     #    Digital Identity Manager
+│   ├── identity_manager.py     #    Digital Identity Manager
+│   ├── hardware_detector.py    #    🖥️ Détection automatique du matériel & tiers
+│   └── usb_builder.py          #    💾 Constructeur de clé USB portable
 │
 ├── config/                     # ⚙️ Configuration files
 │   ├── agents.yaml             #    Agent definitions & model tiers

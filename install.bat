@@ -40,6 +40,22 @@ echo %CYAN%%BOLD%╚════════════════════
 echo.
 
 :: ============================================================
+:: STEP 0: HARDWARE DETECTION
+:: ============================================================
+echo.
+echo %MAGENTA%%BOLD%━━━ STEP 0: 🖥️ Détection du Matériel ━━━%RESET%
+echo.
+
+:: Try running hardware detection via Python
+python -c "from core.hardware_detector import detect_hardware, classify_tier, print_hardware_report; print_hardware_report()" 2>nul
+if %errorlevel% neq 0 (
+    echo   %YELLOW%⚠ Détection matérielle non disponible (psutil peut être manquant)%RESET%
+    echo   %DIM%  Installez psutil : pip install psutil%RESET%
+)
+
+echo.
+
+:: ============================================================
 :: STEP 1: CHECK PYTHON
 :: ============================================================
 echo.
