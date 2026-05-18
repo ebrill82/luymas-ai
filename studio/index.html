@@ -1,26 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Luymas AI Studio — Command Center</title>
-  <meta name="description" content="Luymas AI multi-agent system control panel. Monitor, manage, and coordinate your AI team.">
-  <meta name="theme-color" content="#0d1117">
+  <title>Luymas AI Studio</title>
+  <meta name="description" content="Luymas AI — Système Multi-Agents. Surveillez, gérez et coordonnez votre équipe IA.">
+  <meta name="theme-color" content="#000000">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
 </head>
 <body>
 
-  <!-- Wave Canvas (Liquid Glass Background) -->
-  <canvas id="waveCanvas"></canvas>
-
-  <!-- Liquid Glass Loading Overlay -->
+  <!-- Loading Overlay -->
   <div id="liquid-glass-overlay" class="liquid-glass-overlay" style="display:none">
     <div class="spinner spinner-lg"></div>
-    <p>Loading Luymas AI Studio...</p>
+    <p>Chargement de Luymas AI Studio...</p>
   </div>
 
   <!-- Toast Container -->
@@ -31,12 +28,12 @@
     <div class="modal">
       <div class="modal-header">
         <h2 id="modal-title" class="modal-title"></h2>
-        <button id="modal-close" class="modal-close" aria-label="Close dialog">&times;</button>
+        <button id="modal-close" class="modal-close" aria-label="Fermer">&times;</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
       <div class="modal-footer">
-        <button id="modal-cancel" class="btn">Cancel</button>
-        <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+        <button id="modal-cancel" class="btn">Annuler</button>
+        <button id="modal-confirm" class="btn btn-primary">Confirmer</button>
       </div>
     </div>
   </div>
@@ -45,8 +42,8 @@
   <div id="search-overlay" class="search-overlay">
     <div class="search-modal">
       <div class="search-input-wrap">
-        <span class="search-magnifier">🔍</span>
-        <input type="text" id="search-overlay-input" placeholder="Search agents, projects, commands..." aria-label="Search">
+        <span class="search-magnifier">◇</span>
+        <input type="text" id="search-overlay-input" placeholder="Rechercher agents, projets, commandes..." aria-label="Rechercher">
         <kbd>ESC</kbd>
       </div>
       <div id="search-results" class="search-results"></div>
@@ -55,9 +52,9 @@
 
   <!-- Lightbox -->
   <div id="lightbox-overlay" class="lightbox-overlay">
-    <button class="lightbox-close" aria-label="Close lightbox">&times;</button>
+    <button class="lightbox-close" aria-label="Fermer">&times;</button>
     <div class="lightbox-content">
-      <img id="lightbox-image" src="" alt="Design preview">
+      <img id="lightbox-image" src="" alt="Aperçu design">
       <div id="lightbox-meta" class="lightbox-meta"></div>
     </div>
   </div>
@@ -65,7 +62,7 @@
   <!-- ==================== APP LAYOUT ==================== -->
   <div class="app-layout">
 
-    <!-- Top Header with Tab Navigation -->
+    <!-- Top Header -->
     <header class="top-header" role="banner">
       <div class="header-left">
         <div class="brand-mark">
@@ -74,43 +71,43 @@
         </div>
       </div>
 
-      <nav class="tab-nav" role="tablist" aria-label="Main navigation">
+      <nav class="tab-nav" role="tablist" aria-label="Navigation principale">
         <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true">
-          <span class="tab-icon">🪐</span><span class="tab-label">Dashboard</span>
+          <span class="tab-icon">◇</span><span class="tab-label">Dashboard</span>
         </button>
         <button class="tab-btn" data-tab="agents" role="tab" aria-selected="false">
-          <span class="tab-icon">💎</span><span class="tab-label">Agents</span>
+          <span class="tab-icon">◆</span><span class="tab-label">Agents</span>
         </button>
         <button class="tab-btn" data-tab="projects" role="tab" aria-selected="false">
-          <span class="tab-icon">📦</span><span class="tab-label">Projects</span>
+          <span class="tab-icon">□</span><span class="tab-label">Projets</span>
         </button>
         <button class="tab-btn" data-tab="warroom" role="tab" aria-selected="false">
-          <span class="tab-icon">💬</span><span class="tab-label">War Room</span>
-          <span class="tab-badge urgent" id="warroom-badge">3</span>
+          <span class="tab-icon">◈</span><span class="tab-label">War Room</span>
+          <span class="tab-badge" id="warroom-badge">3</span>
         </button>
         <button class="tab-btn" data-tab="terminal" role="tab" aria-selected="false">
-          <span class="tab-icon">💎</span><span class="tab-label">Terminal</span>
+          <span class="tab-icon">▸</span><span class="tab-label">Terminal</span>
         </button>
         <button class="tab-btn" data-tab="design" role="tab" aria-selected="false">
-          <span class="tab-icon">💜</span><span class="tab-label">Design</span>
+          <span class="tab-icon">✦</span><span class="tab-label">Design</span>
         </button>
         <button class="tab-btn" data-tab="files" role="tab" aria-selected="false">
-          <span class="tab-icon">📦</span><span class="tab-label">Files</span>
+          <span class="tab-icon">▪</span><span class="tab-label">Fichiers</span>
         </button>
         <button class="tab-btn" data-tab="settings" role="tab" aria-selected="false">
-          <span class="tab-icon">🔷</span><span class="tab-label">Settings</span>
+          <span class="tab-icon">⚙</span><span class="tab-label">Réglages</span>
         </button>
       </nav>
 
       <div class="header-right">
         <div id="connection-status" class="connection-status connecting">
           <span class="status-dot"></span>
-          <span class="status-text">Connecting...</span>
+          <span class="status-text">Connexion...</span>
         </div>
-        <button class="header-icon-btn" id="btn-search" aria-label="Search" title="Search (Ctrl+K)">🔍</button>
-        <button class="header-icon-btn" id="btn-notifications" aria-label="Notifications" title="Notifications">🔔<span class="notif-dot"></span></button>
-        <button class="header-icon-btn" id="btn-terminal-quick" aria-label="Terminal" title="Terminal (Ctrl+`)">⌨️</button>
-        <div class="user-pill" id="user-menu" tabindex="0" role="button" aria-label="User menu">
+        <button class="header-icon-btn" id="btn-search" aria-label="Rechercher" title="Rechercher (Ctrl+K)">◇</button>
+        <button class="header-icon-btn" id="btn-notifications" aria-label="Notifications" title="Notifications">▪</button>
+        <button class="header-icon-btn" id="btn-terminal-quick" aria-label="Terminal" title="Terminal (Ctrl+`)">▸</button>
+        <div class="user-pill" id="user-menu" tabindex="0" role="button" aria-label="Menu utilisateur">
           <div class="user-avatar-sm">LU</div>
           <span class="user-name-sm">Admin</span>
         </div>
@@ -120,42 +117,36 @@
     <!-- Main Content -->
     <main class="main-content" role="main">
 
-      <!-- ============================================================ -->
       <!-- TAB 1: DASHBOARD -->
-      <!-- ============================================================ -->
       <section id="tab-dashboard" class="tab-panel active" role="tabpanel" aria-label="Dashboard">
-        <!-- System Status Bar — 4 stat cards -->
         <div class="status-bar" id="dashboard-status-bar"></div>
 
         <div class="dashboard-layout">
           <div class="dashboard-main-col">
-            <!-- Agent Grid -->
             <div class="card glass-card">
               <div class="card-header">
                 <div>
-                  <div class="card-title">💎 Agent Team</div>
-                  <div class="card-subtitle">Real-time status of your 11 AI agents</div>
+                  <div class="card-title">Équipe d'Agents</div>
+                  <div class="card-subtitle">Statut en temps réel de vos 11 agents IA</div>
                 </div>
-                <button class="btn btn-sm" onclick="app.switchTab('agents')">View All →</button>
+                <button class="btn btn-sm" onclick="app.switchTab('agents')">Voir tout →</button>
               </div>
               <div class="card-body">
                 <div id="dashboard-agents" class="agents-grid-compact"></div>
               </div>
             </div>
 
-            <!-- Activity Feed -->
             <div class="card glass-card">
               <div class="card-header">
                 <div>
-                  <div class="card-title">📡 Recent Activity</div>
-                  <div class="card-subtitle">Live feed of agent actions</div>
+                  <div class="card-title">Activité Récente</div>
+                  <div class="card-subtitle">Flux en direct des actions des agents</div>
                 </div>
-                <select id="activity-filter" class="select-sm glass-input" aria-label="Filter activity">
-                  <option value="all">All</option>
+                <select id="activity-filter" class="select-sm" aria-label="Filtrer">
+                  <option value="all">Tout</option>
                   <option value="agent">Agents</option>
-                  <option value="task">Tasks</option>
-                  <option value="system">System</option>
-                  <option value="approval">Approvals</option>
+                  <option value="task">Tâches</option>
+                  <option value="system">Système</option>
                 </select>
               </div>
               <div class="card-body">
@@ -165,41 +156,38 @@
           </div>
 
           <div class="dashboard-side-col">
-            <!-- Quick Actions -->
             <div class="card glass-card">
-              <div class="card-header"><div class="card-title">⚡ Quick Actions</div></div>
+              <div class="card-header"><div class="card-title">Actions Rapides</div></div>
               <div class="card-body">
                 <div class="quick-actions">
                   <button class="action-btn" onclick="app.createProjectModal()">
-                    <span class="action-icon">🚀</span> New Project
+                    <span class="action-icon">□</span> Nouveau Projet
                   </button>
                   <button class="action-btn" onclick="app.checkModels()">
-                    <span class="action-icon">🔷</span> Check Models
+                    <span class="action-icon">◇</span> Vérifier Modèles
                   </button>
                   <button class="action-btn" onclick="app.runDiagnostics()">
-                    <span class="action-icon">💠</span> Run Diagnostics
+                    <span class="action-icon">○</span> Diagnostics
                   </button>
                   <button class="action-btn" onclick="app.switchTab('warroom')">
-                    <span class="action-icon">⚔️</span> Open War Room
+                    <span class="action-icon">◈</span> War Room
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- System Health -->
             <div class="card glass-card">
-              <div class="card-header"><div class="card-title">💚 System Health</div></div>
+              <div class="card-header"><div class="card-title">Santé Système</div></div>
               <div class="card-body">
                 <div id="dashboard-health" class="health-grid"></div>
               </div>
             </div>
 
-            <!-- Approval Queue -->
             <div class="card glass-card">
               <div class="card-header">
                 <div>
-                  <div class="card-title">🔔 Pending Approvals</div>
-                  <div class="card-subtitle">Actions requiring your approval</div>
+                  <div class="card-title">Approbations en Attente</div>
+                  <div class="card-subtitle">Actions nécessitant votre approbation</div>
                 </div>
                 <span id="approval-count" class="badge badge-warn">0</span>
               </div>
@@ -211,98 +199,85 @@
         </div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 2: AGENTS -->
-      <!-- ============================================================ -->
       <section id="tab-agents" class="tab-panel" role="tabpanel" aria-label="Agents">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">💎 AI Agent Team</h2>
-            <p class="panel-subtitle">11 specialized agents working together to build your vision</p>
+            <h2 class="panel-title">Équipe d'Agents IA</h2>
+            <p class="panel-subtitle">11 agents spécialisés travaillant ensemble pour réaliser votre vision</p>
           </div>
           <div class="panel-actions">
-            <button class="btn" onclick="app.refreshAgents()">🔄 Refresh</button>
-            <button class="btn btn-primary glass-btn" onclick="app.startAllAgents()">▶ Start All</button>
+            <button class="btn" onclick="app.refreshAgents()">Actualiser</button>
+            <button class="btn btn-primary glass-btn" onclick="app.startAllAgents()">Tout Démarrer</button>
           </div>
         </div>
 
-        <!-- Agent Detail Panel (hidden by default) -->
         <div id="agent-detail-panel" class="agent-detail-panel hidden"></div>
-
-        <!-- Agent Grid -->
         <div id="agents-grid" class="agents-grid"></div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 3: PROJECTS -->
-      <!-- ============================================================ -->
-      <section id="tab-projects" class="tab-panel" role="tabpanel" aria-label="Projects">
+      <section id="tab-projects" class="tab-panel" role="tabpanel" aria-label="Projets">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">📦 Projects</h2>
-            <p class="panel-subtitle">Manage your software projects from planning to deployment</p>
+            <h2 class="panel-title">Projets</h2>
+            <p class="panel-subtitle">Gérez vos projets logiciels de la planification au déploiement</p>
           </div>
-          <button class="btn btn-primary glass-btn" onclick="app.createProjectModal()">+ New Project</button>
+          <button class="btn btn-primary glass-btn" onclick="app.createProjectModal()">+ Nouveau Projet</button>
         </div>
 
         <div class="projects-filters">
-          <button class="filter-btn active" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="planning">Planning</button>
-          <button class="filter-btn" data-filter="in-progress">In Progress</button>
-          <button class="filter-btn" data-filter="review">Review</button>
-          <button class="filter-btn" data-filter="deployed">Deployed</button>
+          <button class="filter-btn active" data-filter="all">Tout</button>
+          <button class="filter-btn" data-filter="planning">Planification</button>
+          <button class="filter-btn" data-filter="in-progress">En Cours</button>
+          <button class="filter-btn" data-filter="review">Revue</button>
+          <button class="filter-btn" data-filter="deployed">Déployé</button>
         </div>
 
         <div id="project-list" class="project-list"></div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 4: WAR ROOM -->
-      <!-- ============================================================ -->
       <section id="tab-warroom" class="tab-panel" role="tabpanel" aria-label="War Room">
         <div class="warroom-layout" id="warroom-layout">
-          <!-- Threads Sidebar -->
           <div class="warroom-sidebar">
             <div class="warroom-sidebar-header">
-              <input type="text" class="input-sm glass-input" id="thread-search" placeholder="Search conversations..." aria-label="Search conversations">
+              <input type="text" class="input-sm" id="thread-search" placeholder="Rechercher conversations..." aria-label="Rechercher conversations">
             </div>
             <div id="thread-list" class="thread-list"></div>
           </div>
 
-          <!-- Chat Area -->
           <div class="warroom-chat">
             <div class="warroom-chat-header">
               <div class="chat-header-info">
-                <span id="chat-title" class="chat-title">⚔️ War Room</span>
-                <span class="chat-subtitle" id="chat-subtitle">11 agents online</span>
+                <span id="chat-title" class="chat-title">War Room</span>
+                <span class="chat-subtitle" id="chat-subtitle">11 agents en ligne</span>
               </div>
               <div class="chat-header-actions">
-                <button class="btn btn-sm" onclick="app.showApprovalsInChat()">🔔 Approvals</button>
-                <button class="btn btn-sm" id="btn-toggle-approvals-sidebar" onclick="app.toggleApprovalsSidebar()">📋</button>
+                <button class="btn btn-sm" onclick="app.showApprovalsInChat()">Approbations</button>
+                <button class="btn btn-sm" id="btn-toggle-approvals-sidebar" onclick="app.toggleApprovalsSidebar()">◇</button>
               </div>
             </div>
 
             <div id="chat-messages" class="chat-messages-area"></div>
 
-            <!-- Typing Indicator -->
             <div id="typing-indicator" class="typing-indicator hidden">
               <span class="typing-dots"><span></span><span></span><span></span></span>
-              <span id="typing-agent" class="typing-name">Agent</span> is typing...
+              <span id="typing-agent" class="typing-name">Agent</span> écrit...
             </div>
 
             <div class="chat-input-bar">
               <div class="chat-input-wrap">
                 <div id="slash-hint" class="slash-hint"></div>
-                <input type="text" id="chat-input" placeholder="Send a message... (type / for commands)" aria-label="Chat message" autocomplete="off">
-                <button id="chat-send-btn" class="btn-send" aria-label="Send message">➤</button>
+                <input type="text" id="chat-input" placeholder="Envoyer un message... (tapez / pour les commandes)" aria-label="Message" autocomplete="off">
+                <button id="chat-send-btn" class="btn-send" aria-label="Envoyer">▸</button>
               </div>
             </div>
           </div>
 
-          <!-- Approvals Sidebar (togglable) -->
           <div id="approvals-sidebar" class="approvals-sidebar hidden">
             <div class="approvals-sidebar-header">
-              <span>🔔 Approval Queue</span>
+              <span>File d'Approbation</span>
               <button class="btn-icon-sm" onclick="app.toggleApprovalsSidebar()">✕</button>
             </div>
             <div id="approvals-queue-list" class="approvals-queue-list"></div>
@@ -310,12 +285,9 @@
         </div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 5: TERMINAL -->
-      <!-- ============================================================ -->
       <section id="tab-terminal" class="tab-panel" role="tabpanel" aria-label="Terminal">
         <div class="terminal-wrapper" id="terminal-wrapper">
-          <div id="terminal-container" style="height: 100%;"></div>
           <div class="terminal-toolbar">
             <div class="terminal-toolbar-left">
               <span class="terminal-dot red"></span>
@@ -331,254 +303,203 @@
                 <button class="log-filter-btn error" data-level="error">ERROR</button>
                 <button class="log-filter-btn debug" data-level="debug">DEBUG</button>
               </div>
-              <button class="btn-icon-sm" id="terminal-clear" title="Clear terminal">🗑️</button>
-              <button class="btn-icon-sm" id="terminal-copy" title="Copy to clipboard">📋</button>
-              <button class="btn-icon-sm" id="terminal-fullscreen" title="Fullscreen">⛶</button>
+              <button class="btn-icon-sm" id="terminal-clear" title="Effacer">✕</button>
+              <button class="btn-icon-sm" id="terminal-copy" title="Copier">◇</button>
+              <button class="btn-icon-sm" id="terminal-fullscreen" title="Plein écran">□</button>
             </div>
           </div>
           <div class="terminal-output" id="terminal-output"></div>
           <div class="terminal-input-line">
-            <span class="terminal-prompt">luymas&gt; </span>
-            <input type="text" id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false" aria-label="Terminal command input" placeholder="Type a command...">
+            <span class="terminal-prompt">~$ </span>
+            <input type="text" id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false" aria-label="Commande terminal" placeholder="Tapez une commande...">
           </div>
         </div>
+        <!-- LuymasTerminal container (hidden, for separate tab content) -->
+        <div id="terminal-container" style="display:none;height:100%;"></div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 6: DESIGN -->
-      <!-- ============================================================ -->
       <section id="tab-design" class="tab-panel" role="tabpanel" aria-label="Design">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">💜 Design Studio</h2>
-            <p class="panel-subtitle">Image generation, design system preview, and inspiration</p>
+            <h2 class="panel-title">Studio Design</h2>
+            <p class="panel-subtitle">Génération d'images, aperçu design system et inspiration</p>
           </div>
         </div>
 
         <div class="design-layout">
-          <!-- Left: Image Generation + Gallery -->
           <div class="design-main">
-            <!-- Generate Image Form -->
             <div class="card glass-card">
-              <div class="card-header"><div class="card-title">✨ Generate Image</div></div>
+              <div class="card-header"><div class="card-title">Générer une Image</div></div>
               <div class="card-body">
                 <form id="design-gen-form" class="design-gen-form">
                   <div class="form-group">
                     <label class="form-label" for="design-prompt">Prompt</label>
-                    <textarea id="design-prompt" class="form-textarea glass-input" rows="3" placeholder="Describe the image you want to generate..." required></textarea>
+                    <textarea id="design-prompt" class="form-textarea" rows="3" placeholder="Décrivez l'image à générer..." required></textarea>
                   </div>
                   <div class="form-row-3">
                     <div class="form-group">
-                      <label class="form-label" for="design-model">Model</label>
-                      <select id="design-model" class="form-select glass-input">
+                      <label class="form-label" for="design-model">Modèle</label>
+                      <select id="design-model" class="form-select">
                         <option value="flux.1">FLUX.1</option>
                         <option value="sd3">Stable Diffusion 3</option>
                         <option value="z-image">Z-Image Turbo</option>
                       </select>
                     </div>
                     <div class="form-group">
-                      <label class="form-label" for="design-size">Size</label>
-                      <select id="design-size" class="form-select glass-input">
+                      <label class="form-label" for="design-size">Taille</label>
+                      <select id="design-size" class="form-select">
                         <option value="1024x1024">1024×1024</option>
                         <option value="1024x768">1024×768</option>
                         <option value="768x1024">768×1024</option>
-                        <option value="512x512">512×512</option>
                       </select>
                     </div>
                     <div class="form-group">
                       <label class="form-label" for="design-style">Style</label>
-                      <select id="design-style" class="form-select glass-input">
+                      <select id="design-style" class="form-select">
                         <option value="auto">Auto</option>
-                        <option value="photorealistic">Photorealistic</option>
+                        <option value="photorealistic">Photoréaliste</option>
                         <option value="illustration">Illustration</option>
                         <option value="minimal">Minimal</option>
-                        <option value="corporate">Corporate</option>
                       </select>
                     </div>
                   </div>
-                  <button type="submit" class="btn btn-primary glass-btn btn-block" id="design-gen-btn">🎨 Generate Image</button>
+                  <button type="submit" class="btn btn-primary glass-btn btn-block">Générer</button>
                 </form>
               </div>
             </div>
 
-            <!-- Image Gallery -->
             <div class="card glass-card">
               <div class="card-header">
-                <div class="card-title">🖼️ Design Gallery</div>
+                <div class="card-title">Galerie Design</div>
                 <span id="design-gallery-count" class="badge">0 images</span>
               </div>
               <div class="card-body">
                 <div id="design-gallery" class="design-gallery"></div>
                 <div id="design-gallery-empty" class="empty-state-sm">
-                  <span class="empty-icon-sm">🖼️</span>
-                  <p>No images generated yet. Use the form above to create your first design.</p>
+                  <span class="empty-icon-sm">✦</span>
+                  <p>Aucune image générée. Utilisez le formulaire ci-dessus.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Right: Design System + Inspiration -->
           <div class="design-side">
-            <!-- Design System Preview -->
             <div class="card glass-card">
-              <div class="card-header"><div class="card-title">🎯 Design System</div></div>
+              <div class="card-header"><div class="card-title">Design System</div></div>
               <div class="card-body">
                 <div class="design-system-preview">
                   <div class="ds-section">
-                    <div class="ds-label">Colors</div>
+                    <div class="ds-label">Couleurs</div>
                     <div class="ds-colors">
-                      <div class="ds-swatch" style="background:#22c55e" title="Primary"></div>
-                      <div class="ds-swatch" style="background:#f59e0b" title="Warning"></div>
-                      <div class="ds-swatch" style="background:#ef4444" title="Danger"></div>
-                      <div class="ds-swatch" style="background:#58a6ff" title="Info"></div>
-                      <div class="ds-swatch" style="background:#8b5cf6" title="Accent"></div>
-                      <div class="ds-swatch" style="background:#0d1117" title="Background"></div>
-                      <div class="ds-swatch" style="background:#161b22" title="Surface"></div>
-                      <div class="ds-swatch" style="background:#e6edf3" title="Text"></div>
+                      <div class="ds-swatch" style="background:#ffffff" title="Blanc"></div>
+                      <div class="ds-swatch" style="background:rgba(255,255,255,0.5)" title="Gris clair"></div>
+                      <div class="ds-swatch" style="background:rgba(255,255,255,0.2)" title="Gris moyen"></div>
+                      <div class="ds-swatch" style="background:rgba(255,255,255,0.08)" title="Gris foncé"></div>
+                      <div class="ds-swatch" style="background:#000000;border:1px solid rgba(255,255,255,0.1)" title="Noir"></div>
                     </div>
                   </div>
                   <div class="ds-section">
-                    <div class="ds-label">Typography</div>
+                    <div class="ds-label">Typographie</div>
                     <div class="ds-type-samples">
-                      <div class="ds-type-h1">Heading 1</div>
-                      <div class="ds-type-h2">Heading 2</div>
-                      <div class="ds-type-body">Body text — Inter 15px</div>
+                      <div class="ds-type-h1">Titre — Inter 600</div>
+                      <div class="ds-type-h2">Sous-titre — Inter 500</div>
+                      <div class="ds-type-body">Corps — Inter 400, 14px</div>
                       <div class="ds-type-mono">Monospace — JetBrains Mono</div>
                     </div>
                   </div>
                   <div class="ds-section">
-                    <div class="ds-label">Spacing</div>
+                    <div class="ds-label">Espacement</div>
                     <div class="ds-spacing">
                       <div class="ds-spacing-item" style="width:4px" title="4px"></div>
                       <div class="ds-spacing-item" style="width:8px" title="8px"></div>
                       <div class="ds-spacing-item" style="width:16px" title="16px"></div>
                       <div class="ds-spacing-item" style="width:24px" title="24px"></div>
                       <div class="ds-spacing-item" style="width:32px" title="32px"></div>
-                      <div class="ds-spacing-item" style="width:48px" title="48px"></div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Freshness Score -->
             <div class="card glass-card">
-              <div class="card-header"><div class="card-title">🌿 Freshness Score</div></div>
+              <div class="card-header"><div class="card-title">Inspiration</div></div>
               <div class="card-body">
-                <div class="freshness-display">
-                  <div class="freshness-ring">
-                    <svg viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="42" fill="none" stroke="#161b22" stroke-width="8"/>
-                      <circle id="freshness-arc" cx="50" cy="50" r="42" fill="none" stroke="#22c55e" stroke-width="8" stroke-dasharray="264" stroke-dashoffset="66" stroke-linecap="round" transform="rotate(-90 50 50)"/>
-                    </svg>
-                    <div class="freshness-value" id="freshness-value">75%</div>
-                  </div>
-                  <div class="freshness-info">
-                    <div class="freshness-label">Design Freshness</div>
-                    <div class="freshness-desc">Your designs are fresh and avoid generic AI patterns</div>
-                  </div>
+                <div id="inspiration-grid" class="inspiration-grid">
+                  <div class="empty-state-sm"><p style="font-size:11px;color:rgba(255,255,255,0.3)">Parcourez les tendances design</p></div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Inspiration Browser -->
-            <div class="card glass-card">
-              <div class="card-header">
-                <div class="card-title">💡 Inspiration</div>
-                <span class="badge">Trending</span>
-              </div>
-              <div class="card-body">
-                <div id="inspiration-grid" class="inspiration-grid"></div>
-              </div>
-            </div>
-
-            <!-- Design Trend Alerts -->
-            <div class="card glass-card">
-              <div class="card-header"><div class="card-title">📈 Trend Alerts</div></div>
-              <div class="card-body">
-                <div id="trend-alerts" class="trend-alerts"></div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 7: FILES -->
-      <!-- ============================================================ -->
-      <section id="tab-files" class="tab-panel" role="tabpanel" aria-label="Project Files">
+      <section id="tab-files" class="tab-panel" role="tabpanel" aria-label="Fichiers">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">📦 Project Files</h2>
-            <p class="panel-subtitle">Browse and manage files generated by agents</p>
+            <h2 class="panel-title">Fichiers du Projet</h2>
+            <p class="panel-subtitle">Parcourir et gérer les fichiers générés par les agents</p>
           </div>
           <div class="panel-actions">
-            <select id="files-project-select" class="form-select glass-input" aria-label="Select project">
-              <option value="">Select a project...</option>
+            <select id="files-project-select" class="form-select" aria-label="Sélectionner un projet">
+              <option value="">Sélectionner un projet...</option>
             </select>
-            <button class="btn" id="btn-download-zip" onclick="app.downloadProjectZip()">📦 Download ZIP</button>
+            <button class="btn" id="btn-download-zip" onclick="app.downloadProjectZip()">Télécharger ZIP</button>
           </div>
         </div>
 
         <div class="files-layout">
-          <!-- File Tree -->
           <div class="files-tree-panel">
             <div class="files-tree-header">
-              <span>EXPLORER</span>
-              <button class="btn-icon-sm" onclick="app.refreshFileTree()" title="Refresh">🔄</button>
+              <span>EXPLORATEUR</span>
+              <button class="btn-icon-sm" onclick="app.refreshFileTree()" title="Actualiser">↻</button>
             </div>
             <div id="file-tree" class="file-tree"></div>
           </div>
 
-          <!-- File Content Viewer -->
           <div class="files-content-panel">
             <div class="files-content-header" id="file-content-header">
-              <span id="file-content-filename" class="file-content-filename">Select a file to view</span>
+              <span id="file-content-filename" class="file-content-filename">Sélectionner un fichier</span>
               <div class="file-content-actions">
-                <button class="btn-icon-sm" id="btn-copy-file" onclick="app.copyFileContent()" title="Copy content" style="display:none">📋</button>
-                <button class="btn-icon-sm" id="btn-download-file" onclick="app.downloadFile()" title="Download file" style="display:none">⬇️</button>
+                <button class="btn-icon-sm" id="btn-copy-file" onclick="app.copyFileContent()" title="Copier" style="display:none">◇</button>
+                <button class="btn-icon-sm" id="btn-download-file" onclick="app.downloadFile()" title="Télécharger" style="display:none">↓</button>
               </div>
             </div>
-            <div id="file-breadcrumb" class="file-breadcrumb" style="display:none"></div>
             <div id="file-content" class="file-content-area">
               <div class="empty-state">
-                <div class="empty-icon">📄</div>
-                <div class="empty-title">No File Selected</div>
-                <div class="empty-desc">Click on a file in the tree to view its contents</div>
+                <div class="empty-icon">·</div>
+                <div class="empty-title">Aucun Fichier Sélectionné</div>
+                <div class="empty-desc">Cliquez sur un fichier dans l'arborescence pour voir son contenu</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ============================================================ -->
       <!-- TAB 8: SETTINGS -->
-      <!-- ============================================================ -->
-      <section id="tab-settings" class="tab-panel" role="tabpanel" aria-label="Settings">
+      <section id="tab-settings" class="tab-panel" role="tabpanel" aria-label="Réglages">
         <div class="settings-layout">
-          <!-- Settings Navigation -->
-          <nav class="settings-nav" aria-label="Settings sections">
+          <nav class="settings-nav" aria-label="Sections réglages">
             <button class="settings-nav-item active" data-section="models">
-              <span class="snav-icon">🔷</span> Models
+              <span class="snav-icon">◇</span> Modèles
             </button>
             <button class="settings-nav-item" data-section="messaging">
-              <span class="snav-icon">💬</span> Messaging
+              <span class="snav-icon">◈</span> Messagerie
             </button>
             <button class="settings-nav-item" data-section="security">
-              <span class="snav-icon">🛡️</span> Security
+              <span class="snav-icon">▮</span> Sécurité
             </button>
             <button class="settings-nav-item" data-section="email">
-              <span class="snav-icon">📧</span> Email
+              <span class="snav-icon">✉</span> Email
             </button>
             <button class="settings-nav-item" data-section="identity">
-              <span class="snav-icon">🪪</span> Identity
+              <span class="snav-icon">◈</span> Identité
             </button>
             <button class="settings-nav-item" data-section="system">
-              <span class="snav-icon">⚙️</span> System
+              <span class="snav-icon">⚙</span> Système
             </button>
           </nav>
-
-          <!-- Settings Content -->
           <div id="settings-content" class="settings-content"></div>
         </div>
       </section>

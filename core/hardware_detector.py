@@ -184,7 +184,7 @@ def detect_hardware() -> Dict[str, Any]:
         info["cpu_model"] = platform.processor() or "Inconnu"
         info["cpu_cores"] = psutil.cpu_count(logical=True) or 1
     except ImportError:
-        logger.warning("⚠️ psutil non installé — détection CPU limitée")
+        logger.warning("psutil non installé — détection CPU limitée")
         info["cpu_model"] = platform.processor() or "Inconnu"
         info["cpu_cores"] = os.cpu_count() or 1
 
@@ -204,7 +204,7 @@ def detect_hardware() -> Dict[str, Any]:
                     elif line.startswith("MemAvailable:"):
                         info["ram_available_gb"] = round(int(line.split()[1]) / 1024 / 1024, 1)
         except (FileNotFoundError, ValueError):
-            logger.warning("⚠️ Impossible de détecter la RAM")
+            logger.warning("Impossible de détecter la RAM")
 
     # ── GPU ──
     # Méthode 1 : nvidia-smi (le plus fiable)
@@ -237,7 +237,7 @@ def detect_hardware() -> Dict[str, Any]:
                     elif free_str.endswith("T"):
                         info["disk_free_gb"] = round(float(free_str[:-1]) * 1024, 1)
         except Exception:
-            logger.warning("⚠️ Impossible de détecter l'espace disque")
+            logger.warning("Impossible de détecter l'espace disque")
 
     return info
 
@@ -404,7 +404,7 @@ def check_model_fits(model_name: str, available_ram_gb: float) -> bool:
 
 def print_hardware_report(info: Optional[Dict[str, Any]] = None) -> str:
     """
-    Affiche un rapport de détection matériel coloré dans le terminal.
+    Affiche un rapport de détection matériel sobre dans le terminal.
     Retourne le rapport en texte brut.
     """
     if info is None:
@@ -414,69 +414,60 @@ def print_hardware_report(info: Optional[Dict[str, Any]] = None) -> str:
     models = get_recommended_models(tier)
     tier_info = TIERS[tier]
 
-    # ANSI couleurs
+    # ANSI couleurs (sobres)
     B = "\033[1m"
     R = "\033[0m"
-    CYAN = "\033[36m"
-    GREEN = "\033[32m"
-    YELLOW = "\033[33m"
-    RED = "\033[31m"
-    MAGENTA = "\033[35m"
-    BLUE = "\033[34m"
     DIM = "\033[2m"
+    WHITE = "\033[37m"
 
-    gpu_str = f"{info['gpu_name']} ({info['gpu_vram_gb']} Go VRAM)" if info["gpu_present"] else "❌ Aucun GPU détecté"
+    gpu_str = f"{info['gpu_name']} ({info['gpu_vram_gb']} Go VRAM)" if info["gpu_present"] else "Aucun GPU détecté"
+
+    max_models_str = str(get_max_models(tier)) if get_max_models(tier) != -1 else "∞ (illimité)"
 
     report = f"""
-{CYAN}{B}╔══════════════════════════════════════════════╗{R}
-{CYAN}{B}║        💎 LUYMAS AI - RAPPORT MATÉRIEL      ║{R}
-{CYAN}{B}╠══════════════════════════════════════════════╣{R}
-{CYAN}{B}║{R} 💎 CPU         : {GREEN}{info['cpu_model']}{R}
-{CYAN}{B}║{R} 🔢 Cœurs       : {GREEN}{info['cpu_cores']}{R}
-{CYAN}{B}║{R} 🧠 RAM Total   : {GREEN}{info['ram_total_gb']} Go{R}
-{CYAN}{B}║{R} 🧠 RAM Libre   : {GREEN}{info['ram_available_gb']} Go{R}
-{CYAN}{B}║{R} 🔮 GPU         : {GREEN if info['gpu_present'] else RED}{gpu_str}{R}
-{CYAN}{B}║{R} 🔮 Nombre GPU  : {GREEN}{info['gpu_count']}{R}
-{CYAN}{B}║{R} 💾 Disque      : {GREEN}{info['disk_free_gb']} Go libre{R}
-{CYAN}{B}║{R} 🖥️ OS          : {BLUE}{info['os_name']} {info['os_version']}{R}
-{CYAN}{B}╠══════════════════════════════════════════════╣{R}
-{CYAN}{B}║{R} 🔮 TIER        : {MAGENTA}{B}{tier.upper()}{R} {tier_info['emoji']}
-{CYAN}{B}║{R} 📝 Description : {YELLOW}{tier_info['description']}{R}
-{CYAN}{B}║{R} 🔢 Modèles max : {YELLOW}{get_max_models(tier) if get_max_models(tier) != -1 else '∞ (illimité)'}{R}
-{CYAN}{B}╠══════════════════════════════════════════════╣{R}
-{CYAN}{B}║{R} 🔷 Modèles recommandés :{R}
-{CYAN}{B}║{R}   Raisonnement : {GREEN}{models.get('reasoning', 'N/A')}{R}
-{CYAN}{B}║{R}   Code         : {GREEN}{models.get('code', 'N/A')}{R}
-{CYAN}{B}║{R}   Design       : {GREEN}{models.get('image', 'N/A')}{R}
-{CYAN}{B}║{R}   Rapide       : {GREEN}{models.get('fast', 'N/A')}{R}
-{CYAN}{B}╚══════════════════════════════════════════════╝{R}
+{B}Luymas AI — Rapport Matériel{R}
+{'─' * 48}
+  CPU       : {info['cpu_model']}
+  Cœurs     : {info['cpu_cores']}
+  RAM       : {info['ram_total_gb']} Go ({info['ram_available_gb']} Go disponible)
+  GPU       : {gpu_str}
+  Disque    : {info['disk_free_gb']} Go libre
+  OS        : {info['os_name']} {info['os_version']}
+{'─' * 48}
+  Tier      : {B}{tier.upper()}{R}
+  Description : {tier_info['description']}
+  Modèles max : {max_models_str}
+{'─' * 48}
+  Modèles recommandés :
+    Raisonnement : {models.get('reasoning', 'N/A')}
+    Code         : {models.get('code', 'N/A')}
+    Design       : {models.get('image', 'N/A')}
+    Rapide       : {models.get('fast', 'N/A')}
+{'─' * 48}
 """
     print(report)
 
     # Version texte brut (sans ANSI)
     plain_report = f"""
-╔══════════════════════════════════════════════╗
-║        💎 LUYMAS AI - RAPPORT MATÉRIEL      ║
-╠══════════════════════════════════════════════╣
-║ 💎 CPU         : {info['cpu_model']}
-║ 🔢 Cœurs       : {info['cpu_cores']}
-║ 🧠 RAM Total   : {info['ram_total_gb']} Go
-║ 🧠 RAM Libre   : {info['ram_available_gb']} Go
-║ 🔮 GPU         : {gpu_str}
-║ 🔮 Nombre GPU  : {info['gpu_count']}
-║ 💾 Disque      : {info['disk_free_gb']} Go libre
-║ 🖥️ OS          : {info['os_name']} {info['os_version']}
-╠══════════════════════════════════════════════╣
-║ 🔮 TIER        : {tier.upper()} {tier_info['emoji']}
-║ 📝 Description : {tier_info['description']}
-║ 🔢 Modèles max : {get_max_models(tier) if get_max_models(tier) != -1 else '∞ (illimité)'}
-╠══════════════════════════════════════════════╣
-║ 🔷 Modèles recommandés :
-║   Raisonnement : {models.get('reasoning', 'N/A')}
-║   Code         : {models.get('code', 'N/A')}
-║   Design       : {models.get('image', 'N/A')}
-║   Rapide       : {models.get('fast', 'N/A')}
-╚══════════════════════════════════════════════╝
+Luymas AI — Rapport Matériel
+{'─' * 48}
+  CPU       : {info['cpu_model']}
+  Cœurs     : {info['cpu_cores']}
+  RAM       : {info['ram_total_gb']} Go ({info['ram_available_gb']} Go disponible)
+  GPU       : {gpu_str}
+  Disque    : {info['disk_free_gb']} Go libre
+  OS        : {info['os_name']} {info['os_version']}
+{'─' * 48}
+  Tier      : {tier.upper()}
+  Description : {tier_info['description']}
+  Modèles max : {max_models_str}
+{'─' * 48}
+  Modèles recommandés :
+    Raisonnement : {models.get('reasoning', 'N/A')}
+    Code         : {models.get('code', 'N/A')}
+    Design       : {models.get('image', 'N/A')}
+    Rapide       : {models.get('fast', 'N/A')}
+{'─' * 48}
 """
     return plain_report
 
